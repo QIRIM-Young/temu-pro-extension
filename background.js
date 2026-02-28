@@ -1,44 +1,28 @@
-// background.js — Service Worker для Temu Pro Extension v14.0
+// --- Temu Pro v14 — Service Worker (background) ---
 
-// --- Відкриття Side Panel при кліку на іконку ---
-chrome.action.onClicked.addListener(async (tab) => {
-    await chrome.sidePanel.open({ tabId: tab.id });
+// Відкрити Side Panel при кліку на іконку
+chrome.action.onClicked.addListener((tab) => {
+    chrome.sidePanel.open({ tabId: tab.id });
 });
 
-// Встановити Side Panel доступним для Temu
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => { });
-
-// --- Обробка повідомлень ---
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    // Запит курсу валют
-    if (request.action === 'fetchExchangeRate') {
+// Обробка повідомлень від content script
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.action === 'fetchRate') {
         fetch('https://open.er-api.com/v6/latest/USD')
-            .then(res => res.json())
-            .then(data => sendResponse({ success: true, data }))
-            .catch(err => sendResponse({
-                success: false,
-                error: err.message,
-                fallback: 41.5
-            }));
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.rates && data.rates.UAH) {
+                    sendResponse({ rate: data.rates.UAH });
+                } else {
+                    sendResponse({ rate: 41.0 });
+                }
+            })
+            .catch(() => sendResponse({ rate: 41.0 }));
         return true; // async response
     }
 
-    // Перемикання режиму панелі
-    if (request.action === 'togglePanelMode') {
-        chrome.storage.local.set({ panelMode: request.mode });
-        // Переслати content script
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs[0]) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    action: 'panelModeChanged',
-                    mode: request.mode
-                });
-            }
-        });
-    }
-
-    // Переслати дані товару в sidepanel
-    if (request.action === 'productHover' || request.action === 'statsUpdate') {
-        // Просто переслати — sidepanel має свій listener
+    // Пересилає statsUpdate та productHover до sidepanel
+    if (msg.action === 'statsUpdate' || msg.action === 'productHover') {
+        chrome.runtime.sendMessage(msg).catch(() => { });
     }
 });

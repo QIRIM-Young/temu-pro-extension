@@ -10,25 +10,21 @@
             color-scheme: light dark;
             --sp-bg: #fff;
             --sp-text: #222;
-            --sp-header-bg: #f8f9fa;
+            --sp-header: #f8f9fa;
             --sp-border: #ddd;
-            --sp-card-bg: #f5f5f5;
-            --sp-subtle: #888;
+            --sp-card: #f5f5f5;
+            --sp-sub: #888;
             --sp-accent: #ff6b00;
-            --sp-input-bg: #fff;
-            --sp-input-border: #ccc;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
                 --sp-bg: #0f0f1a;
                 --sp-text: #e0e0e0;
-                --sp-header-bg: #1a1a2e;
+                --sp-header: #1a1a2e;
                 --sp-border: rgba(255, 255, 255, 0.08);
-                --sp-card-bg: rgba(255, 255, 255, 0.04);
-                --sp-subtle: #666;
-                --sp-input-bg: #222;
-                --sp-input-border: #444;
+                --sp-card: rgba(255, 255, 255, 0.04);
+                --sp-sub: #666;
             }
         }
 
@@ -39,24 +35,16 @@
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             background: var(--sp-bg);
             color: var(--sp-text);
             min-height: 100vh;
-            overflow-x: hidden;
         }
 
-        /* Заголовок */
         .header {
-            background: var(--sp-header-bg);
+            background: var(--sp-header);
             padding: 16px 20px;
             border-bottom: 1px solid var(--sp-border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .header-left {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -67,15 +55,14 @@
             font-weight: 700;
         }
 
-        .header .version {
+        .version {
             font-size: 10px;
-            color: var(--sp-subtle);
-            background: var(--sp-card-bg);
+            color: var(--sp-sub);
+            background: var(--sp-card);
             border-radius: 8px;
             padding: 2px 7px;
         }
 
-        /* Статистика */
         .stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -84,7 +71,7 @@
         }
 
         .stat-card {
-            background: var(--sp-card-bg);
+            background: var(--sp-card);
             border: 1px solid var(--sp-border);
             border-radius: 10px;
             padding: 12px;
@@ -99,12 +86,11 @@
 
         .stat-label {
             font-size: 10px;
-            color: var(--sp-subtle);
+            color: var(--sp-sub);
             margin-top: 2px;
             text-transform: uppercase;
         }
 
-        /* Секція */
         .section {
             padding: 12px 16px;
         }
@@ -112,17 +98,16 @@
         .section-title {
             font-size: 11px;
             font-weight: 700;
-            color: var(--sp-subtle);
+            color: var(--sp-sub);
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 10px;
         }
 
-        /* Плейсхолдер */
         .placeholder {
             text-align: center;
             padding: 30px 20px;
-            color: var(--sp-subtle);
+            color: var(--sp-sub);
             font-size: 12px;
         }
 
@@ -132,11 +117,10 @@
             display: block;
         }
 
-        /* Курс */
         .exchange-rate {
             text-align: center;
             font-size: 11px;
-            color: var(--sp-subtle);
+            color: var(--sp-sub);
             padding: 8px;
             border-top: 1px solid var(--sp-border);
         }
@@ -154,7 +138,7 @@
 
         .info {
             font-size: 11px;
-            color: var(--sp-subtle);
+            color: var(--sp-sub);
             padding: 12px 16px;
             line-height: 1.5;
         }
@@ -163,12 +147,9 @@
 
 <body>
     <div class="header">
-        <div class="header-left">
-            <h1>🛒 Temu Pro</h1>
-            <span class="version">v14.0</span>
-        </div>
+        <h1>🛒 Temu Pro</h1>
+        <span class="version">v14.0</span>
     </div>
-
     <div class="stats">
         <div class="stat-card">
             <div class="stat-num" id="stat-processed">—</div>
@@ -179,9 +160,7 @@
             <div class="stat-label">Сер. бал</div>
         </div>
     </div>
-
     <div class="divider"></div>
-
     <div class="section">
         <div class="section-title">📊 Аналітика</div>
         <div id="product-info">
@@ -191,34 +170,14 @@
             </div>
         </div>
     </div>
-
     <div class="divider"></div>
-
     <div class="info">
         💡 <b>Налаштування</b> доступні через плаваючу панель на сторінці Temu (вкладка ⚙️ Налаштування).
     </div>
-
     <div class="exchange-rate">
         Курс: <span id="exchange-rate">завантаження...</span>
     </div>
-
-    <script>
-        // Отримувати оновлення від content script
-        chrome.runtime.onMessage.addListener((msg) => {
-            if (msg.action === 'statsUpdate') {
-                document.getElementById('stat-processed').textContent = msg.processed || 0;
-                document.getElementById('stat-avg-score').textContent = msg.avgScore || '—';
-            }
-            if (msg.action === 'productHover' && msg.html) {
-                document.getElementById('product-info').innerHTML = msg.html;
-            }
-        });
-
-        // Показати курс
-        chrome.storage.local.get({ exchangeRate: 41.0 }, (s) => {
-            document.getElementById('exchange-rate').textContent = `1$ ≈ ${Math.round(s.exchangeRate)}₴`;
-        });
-    </script>
+    <script src="sidepanel.js"></script>
 </body>
 
 </html>
