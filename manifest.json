@@ -1,0 +1,44 @@
+{
+    "manifest_version": 3,
+    "name": "Temu Smart Score & Bar (UA) - Pro",
+    "version": "14.0",
+    "description": "Розумний аналіз товарів на Temu: автоматичний Smart Score (0-100), фільтрація та конвертація валют.",
+    "permissions": [
+        "storage",
+        "sidePanel"
+    ],
+    "host_permissions": [
+        "https://www.temu.com/*",
+        "https://open.er-api.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.temu.com/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    },
+    "action": {
+        "default_title": "Temu Pro UA — відкрити панель",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    }
+}
