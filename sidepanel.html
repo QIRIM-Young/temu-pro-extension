@@ -1,10 +1,21 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
     <title>Temu Pro — Панель</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            color-scheme: dark;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: #0f0f1a;
@@ -17,114 +28,275 @@
         .header {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             padding: 16px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        .header h1 { font-size: 15px; font-weight: 700; color: #fff; }
-        .header .version { font-size: 10px; color: #666; background: #222; border-radius: 8px; padding: 2px 7px; }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .header .version {
+            font-size: 10px;
+            color: #666;
+            background: #222;
+            border-radius: 8px;
+            padding: 2px 7px;
+        }
+
         .toggle-mode {
-            background: none; border: 1px solid #333; border-radius: 6px; padding: 4px 8px;
-            color: #888; font-size: 11px; cursor: pointer; transition: 0.2s;
+            background: none;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 4px 8px;
+            color: #888;
+            font-size: 11px;
+            cursor: pointer;
+            transition: 0.2s;
         }
-        .toggle-mode:hover { border-color: #ff6b00; color: #ff6b00; }
+
+        .toggle-mode:hover {
+            border-color: #ff6b00;
+            color: #ff6b00;
+        }
 
         /* Статистика */
         .stats {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
             padding: 12px 16px;
         }
+
         .stat-card {
-            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 10px; padding: 12px; text-align: center;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
         }
-        .stat-num { font-size: 22px; font-weight: 800; color: #ff6b00; }
-        .stat-label { font-size: 10px; color: #666; margin-top: 2px; text-transform: uppercase; }
+
+        .stat-num {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ff6b00;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+            text-transform: uppercase;
+        }
 
         /* Секція */
-        .section { padding: 12px 16px; }
+        .section {
+            padding: 12px 16px;
+        }
+
         .section-title {
-            font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase;
-            letter-spacing: 1px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         /* Перемикач */
         .switch-row {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
             margin-bottom: 6px;
         }
-        .switch-label { font-size: 12px; }
-        .switch { position: relative; width: 36px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .switch-label {
+            font-size: 12px;
+        }
+
+        .switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
         .slider {
-            position: absolute; inset: 0; background: #333; border-radius: 20px;
-            cursor: pointer; transition: 0.3s;
+            position: absolute;
+            inset: 0;
+            background: #333;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
         }
+
         .slider::before {
-            content: ''; position: absolute; width: 14px; height: 14px;
-            left: 3px; bottom: 3px; background: #888; border-radius: 50%; transition: 0.3s;
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            left: 3px;
+            bottom: 3px;
+            background: #888;
+            border-radius: 50%;
+            transition: 0.3s;
         }
-        .switch input:checked + .slider { background: #ff6b00; }
-        .switch input:checked + .slider::before { transform: translateX(16px); background: #fff; }
+
+        .switch input:checked+.slider {
+            background: #ff6b00;
+        }
+
+        .switch input:checked+.slider::before {
+            transform: translateX(16px);
+            background: #fff;
+        }
 
         /* Слайдер фільтрів */
         .filter-row {
-            display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
             padding: 6px 0;
         }
-        .filter-label { font-size: 11px; width: 80px; color: #888; flex-shrink: 0; }
+
+        .filter-label {
+            font-size: 11px;
+            width: 80px;
+            color: #888;
+            flex-shrink: 0;
+        }
+
         .filter-row input[type="range"] {
-            flex: 1; height: 4px; -webkit-appearance: none; background: #2a2a3a;
-            border-radius: 4px; outline: none;
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #2a2a3a;
+            border-radius: 4px;
+            outline: none;
         }
+
         .filter-row input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 14px; height: 14px;
-            background: #ff6b00; border-radius: 50%; cursor: pointer;
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #ff6b00;
+            border-radius: 50%;
+            cursor: pointer;
         }
+
         .filter-val {
-            font-size: 11px; font-weight: 700; color: #ff6b00; width: 35px;
-            text-align: right; flex-shrink: 0;
+            font-size: 11px;
+            font-weight: 700;
+            color: #ff6b00;
+            width: 35px;
+            text-align: right;
+            flex-shrink: 0;
         }
 
         /* Ваги */
         .weight-row {
-            display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
         }
+
         .weight-bar-bg {
-            flex: 1; height: 6px; background: #222; border-radius: 3px; overflow: hidden;
+            flex: 1;
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
+            overflow: hidden;
         }
+
         .weight-bar {
-            height: 100%; border-radius: 3px; transition: width 0.3s;
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
         }
 
         /* Товар у аналітиці */
         .product-card {
-            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 10px; padding: 14px; margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 8px;
         }
+
         .product-score {
-            font-size: 28px; font-weight: 900; text-align: center; margin-bottom: 6px;
+            font-size: 28px;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 6px;
         }
-        .product-details { font-size: 11px; color: #888; line-height: 1.6; }
+
+        .product-details {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+        }
 
         /* Плейсхолдер */
         .placeholder {
-            text-align: center; padding: 40px 20px; color: #555; font-size: 12px;
+            text-align: center;
+            padding: 40px 20px;
+            color: #555;
+            font-size: 12px;
         }
-        .placeholder-icon { font-size: 32px; margin-bottom: 10px; display: block; }
+
+        .placeholder-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: block;
+        }
 
         /* Курс */
         .exchange-rate {
-            text-align: center; font-size: 11px; color: #444; padding: 8px;
-            border-top: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+            font-size: 11px;
+            color: #444;
+            padding: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .exchange-rate span { color: #ff6b00; font-weight: 700; }
+
+        .exchange-rate span {
+            color: #ff6b00;
+            font-weight: 700;
+        }
 
         /* Розділювач */
-        .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 16px; }
+        .divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 4px 16px;
+        }
     </style>
 </head>
+
 <body>
     <!-- Заголовок -->
     <div class="header">
@@ -171,11 +343,16 @@
             <span class="switch-label">Активувати фільтри</span>
             <label class="switch"><input type="checkbox" id="cb-filters"><span class="slider"></span></label>
         </div>
-        <div class="filter-row"><span class="filter-label">Мін. балів</span><input type="range" id="fs-score" min="0" max="100" value="0"><span class="filter-val" id="fv-score">0</span></div>
-        <div class="filter-row"><span class="filter-label">Мін. знижка</span><input type="range" id="fs-disc" min="0" max="90" step="5" value="0"><span class="filter-val" id="fv-disc">0%</span></div>
-        <div class="filter-row"><span class="filter-label">Мін. рейтинг</span><input type="range" id="fs-rat" min="0" max="5" step="0.1" value="4.0"><span class="filter-val" id="fv-rat">4.0</span></div>
-        <div class="filter-row"><span class="filter-label">Мін. відгуків</span><input type="range" id="fs-rev" min="0" max="500" step="10" value="10"><span class="filter-val" id="fv-rev">10</span></div>
-        <div class="filter-row"><span class="filter-label">Мін. продажів</span><input type="range" id="fs-sal" min="0" max="10000" step="100" value="100"><span class="filter-val" id="fv-sal">100</span></div>
+        <div class="filter-row"><span class="filter-label">Мін. балів</span><input type="range" id="fs-score" min="0"
+                max="100" value="0"><span class="filter-val" id="fv-score">0</span></div>
+        <div class="filter-row"><span class="filter-label">Мін. знижка</span><input type="range" id="fs-disc" min="0"
+                max="90" step="5" value="0"><span class="filter-val" id="fv-disc">0%</span></div>
+        <div class="filter-row"><span class="filter-label">Мін. рейтинг</span><input type="range" id="fs-rat" min="0"
+                max="5" step="0.1" value="4.0"><span class="filter-val" id="fv-rat">4.0</span></div>
+        <div class="filter-row"><span class="filter-label">Мін. відгуків</span><input type="range" id="fs-rev" min="0"
+                max="500" step="10" value="10"><span class="filter-val" id="fv-rev">10</span></div>
+        <div class="filter-row"><span class="filter-label">Мін. продажів</span><input type="range" id="fs-sal" min="0"
+                max="10000" step="100" value="100"><span class="filter-val" id="fv-sal">100</span></div>
     </div>
 
     <div class="divider"></div>
@@ -183,10 +360,30 @@
     <!-- Ваги -->
     <div class="section">
         <div class="section-title">⚖️ Вага в алгоритмі</div>
-        <div class="weight-row"><span class="filter-label">Знижка</span><div class="weight-bar-bg"><div class="weight-bar" id="wb-disc" style="width:25%;background:#e74c3c"></div></div><input type="range" id="ws-disc" min="0" max="100" value="25" style="width:60px;"><span class="filter-val" id="wv-disc">25</span></div>
-        <div class="weight-row"><span class="filter-label">Рейтинг</span><div class="weight-bar-bg"><div class="weight-bar" id="wb-rat" style="width:25%;background:#f39c12"></div></div><input type="range" id="ws-rat" min="0" max="100" value="25" style="width:60px;"><span class="filter-val" id="wv-rat">25</span></div>
-        <div class="weight-row"><span class="filter-label">Продажі</span><div class="weight-bar-bg"><div class="weight-bar" id="wb-sal" style="width:25%;background:#2ecc71"></div></div><input type="range" id="ws-sal" min="0" max="100" value="25" style="width:60px;"><span class="filter-val" id="wv-sal">25</span></div>
-        <div class="weight-row"><span class="filter-label">Відгуки</span><div class="weight-bar-bg"><div class="weight-bar" id="wb-rev" style="width:25%;background:#3498db"></div></div><input type="range" id="ws-rev" min="0" max="100" value="25" style="width:60px;"><span class="filter-val" id="wv-rev">25</span></div>
+        <div class="weight-row"><span class="filter-label">Знижка</span>
+            <div class="weight-bar-bg">
+                <div class="weight-bar" id="wb-disc" style="width:25%;background:#e74c3c"></div>
+            </div><input type="range" id="ws-disc" min="0" max="100" value="25" style="width:60px;"><span
+                class="filter-val" id="wv-disc">25</span>
+        </div>
+        <div class="weight-row"><span class="filter-label">Рейтинг</span>
+            <div class="weight-bar-bg">
+                <div class="weight-bar" id="wb-rat" style="width:25%;background:#f39c12"></div>
+            </div><input type="range" id="ws-rat" min="0" max="100" value="25" style="width:60px;"><span
+                class="filter-val" id="wv-rat">25</span>
+        </div>
+        <div class="weight-row"><span class="filter-label">Продажі</span>
+            <div class="weight-bar-bg">
+                <div class="weight-bar" id="wb-sal" style="width:25%;background:#2ecc71"></div>
+            </div><input type="range" id="ws-sal" min="0" max="100" value="25" style="width:60px;"><span
+                class="filter-val" id="wv-sal">25</span>
+        </div>
+        <div class="weight-row"><span class="filter-label">Відгуки</span>
+            <div class="weight-bar-bg">
+                <div class="weight-bar" id="wb-rev" style="width:25%;background:#3498db"></div>
+            </div><input type="range" id="ws-rev" min="0" max="100" value="25" style="width:60px;"><span
+                class="filter-val" id="wv-rev">25</span>
+        </div>
     </div>
 
     <div class="divider"></div>
@@ -206,4 +403,5 @@
 
     <script src="sidepanel.js"></script>
 </body>
+
 </html>

@@ -4,6 +4,9 @@ const path = require('path');
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const EXTENSION_PATH = path.resolve(__dirname);
 const TEMU_URL = 'https://www.temu.com/';
+// Профіль користувача Chrome (щоб розширення вже було встановлено)
+const USER_DATA_DIR = path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'User Data');
+const USE_USER_PROFILE = false; // Змініть на true щоб використовувати ваш профіль
 
 // --- Кольори для лога ---
 const OK = '\x1b[32m✓\x1b[0m';
