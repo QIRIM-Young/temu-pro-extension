@@ -111,6 +111,21 @@
     document.head.append(css);
 
     // --- СТВОРЕННЯ ПАНЕЛІ ---
+    // Перевіряємо чи sidepanel відкрито (background повідомляє)
+    let sidePanelOpen = false;
+    chrome.runtime.onMessage.addListener((msg) => {
+        if (msg.action === 'sidePanelOpened') {
+            sidePanelOpen = true;
+            const p = document.getElementById('temu-pro-window');
+            if (p) p.style.display = 'none';
+        }
+        if (msg.action === 'sidePanelClosed') {
+            sidePanelOpen = false;
+            const p = document.getElementById('temu-pro-window');
+            if (p) p.style.display = '';
+        }
+    });
+
     function createMainWindow() {
         if (document.getElementById('temu-pro-window')) return;
         const P = document.createElement('div');
@@ -275,8 +290,13 @@
     document.addEventListener('mouseover', (e) => {
         if (!S.isScriptEnabled) return;
         const card = e.target.closest('[data-tooltip-html]');
+        const html = card ? card.getAttribute('data-tooltip-html') : null;
+        if (!html) return;
+        // Показати в плаваючій панелі
         const info = document.getElementById('tpw-info');
-        if (card && info) info.innerHTML = card.getAttribute('data-tooltip-html');
+        if (info) info.innerHTML = html;
+        // Відправити в sidepanel
+        try { chrome.runtime.sendMessage({ action: 'productHover', html: html }); } catch (e) { }
     });
 
     // --- УТИЛІТИ ---
@@ -444,13 +464,13 @@
                 const color = getColor(score);
                 totalScore += score; count++;
 
-                // --- ФІЛЬТРИ ---
+                // --- ФІЛЬТРИ (opacity замість display:none щоб не ламати Temu infinite scroll) ---
                 if (S.filtersEnabled) {
                     if (score < S.fMinScore || disc < S.fMinDiscount || rating < S.fMinRating ||
                         reviews < S.fMinReviews || sales < S.fMinSales || price < S.fMinPrice || price > S.fMaxPrice) {
-                        product.style.display = 'none'; return;
-                    } else { product.style.display = ''; }
-                } else { product.style.display = ''; }
+                        product.style.opacity = '0.12'; product.style.pointerEvents = 'none'; return;
+                    } else { product.style.opacity = ''; product.style.pointerEvents = ''; }
+                } else { product.style.opacity = ''; product.style.pointerEvents = ''; }
 
                 // --- SCORE BAR ---
                 let bar = product.querySelector('.temu-score-container');

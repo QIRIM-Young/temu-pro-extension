@@ -3,10 +3,13 @@
 // Відкрити Side Panel при кліку на іконку
 chrome.action.onClicked.addListener((tab) => {
     chrome.sidePanel.open({ tabId: tab.id });
+    // Повідомити content script що sidepanel відкрито
+    chrome.tabs.sendMessage(tab.id, { action: 'sidePanelOpened' }).catch(() => { });
 });
 
 // Обробка повідомлень від content script
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    // Fetch курсу через SW (обходить CORS)
     if (msg.action === 'fetchRate') {
         fetch('https://open.er-api.com/v6/latest/USD')
             .then(r => r.json())
