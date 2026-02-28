@@ -5,7 +5,8 @@
     "description": "Розумний аналіз товарів на Temu: автоматичний Smart Score (0-100), фільтрація та конвертація валют.",
     "permissions": [
         "storage",
-        "sidePanel"
+        "sidePanel",
+        "tabs"
     ],
     "host_permissions": [
         "https://www.temu.com/*",

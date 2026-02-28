@@ -1,6 +1,9 @@
-// Temu Pro — Side Panel logic (окремий файл для CSP)
+// Temu Pro — Side Panel logic
 
-// Отримувати оновлення від content script
+// Повідомити background що sidepanel відкрито (port-based)
+const port = chrome.runtime.connect({ name: 'sidepanel' });
+
+// Отримувати оновлення
 chrome.runtime.onMessage.addListener((msg) => {
     if (msg.action === 'statsUpdate') {
         const proc = document.getElementById('stat-processed');

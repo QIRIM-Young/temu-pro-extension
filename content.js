@@ -58,16 +58,17 @@
             }
         }
         .temu-score-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 20px;
+            position: absolute; top: 0; left: 0; width: 100%; height: 18px;
             background: var(--tpw-score); z-index: 50; border-radius: 8px 8px 0 0;
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 6px; box-sizing: border-box; pointer-events: none;
+            backdrop-filter: blur(4px);
         }
         .temu-pills-wrapper { display: flex; gap: 3px; flex: 1; margin-right: 8px; }
-        .temu-pill { height: 6px; flex: 1; border-radius: 10px; background: var(--tpw-bar); overflow: hidden; position: relative; }
+        .temu-pill { height: 5px; flex: 1; border-radius: 10px; background: var(--tpw-bar); overflow: hidden; position: relative; }
         .temu-pill-fill { height: 100%; position: absolute; left: 0; top: 0; transition: width 0.3s ease; }
-        .temu-score-number { font-size: 12px; font-weight: 900; }
-        [data-temu-card="true"] { position: relative; padding-top: 22px !important; }
+        .temu-score-number { font-size: 11px; font-weight: 900; }
+        [data-temu-card="true"] { position: relative; overflow: visible; }
         #temu-pro-window {
             position: fixed; background: var(--tpw-bg); border: 1px solid var(--tpw-border);
             border-radius: 10px; z-index: 9999999; box-shadow: 0 10px 40px rgba(0,0,0,0.3);

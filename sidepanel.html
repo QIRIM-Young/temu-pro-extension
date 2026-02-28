@@ -8,23 +8,36 @@
     <style>
         :root {
             color-scheme: light dark;
-            --sp-bg: #fff;
-            --sp-text: #222;
-            --sp-header: #f8f9fa;
-            --sp-border: #ddd;
-            --sp-card: #f5f5f5;
-            --sp-sub: #888;
+            --sp-bg: #fafbfc;
+            --sp-text: #1a1a2e;
+            --sp-header: linear-gradient(135deg, #ff6b00 0%, #ff8533 100%);
+            --sp-border: rgba(0, 0, 0, 0.06);
+            --sp-card: #fff;
+            --sp-card-border: rgba(0, 0, 0, 0.05);
+            --sp-sub: #8892a4;
             --sp-accent: #ff6b00;
+            --sp-accent2: #e55b00;
+            --sp-green: #22c55e;
+            --sp-blue: #3b82f6;
+            --sp-red: #ef4444;
+            --sp-yellow: #f59e0b;
+            --sp-section: #f3f4f6;
+            --sp-input: #fff;
+            --sp-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --sp-bg: #0f0f1a;
-                --sp-text: #e0e0e0;
-                --sp-header: #1a1a2e;
-                --sp-border: rgba(255, 255, 255, 0.08);
-                --sp-card: rgba(255, 255, 255, 0.04);
-                --sp-sub: #666;
+                --sp-bg: #0d1117;
+                --sp-text: #e6edf3;
+                --sp-header: linear-gradient(135deg, #da520d 0%, #ff6b00 100%);
+                --sp-border: rgba(255, 255, 255, 0.06);
+                --sp-card: #161b22;
+                --sp-card-border: rgba(255, 255, 255, 0.06);
+                --sp-sub: #7d8590;
+                --sp-section: #1c2128;
+                --sp-input: #21262d;
+                --sp-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
             }
         }
 
@@ -35,147 +48,248 @@
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--sp-bg);
             color: var(--sp-text);
             min-height: 100vh;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
+        /* Header */
         .header {
             background: var(--sp-header);
+            color: #fff;
             padding: 16px 20px;
-            border-bottom: 1px solid var(--sp-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
         .header h1 {
-            font-size: 15px;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
         }
 
         .version {
-            font-size: 10px;
-            color: var(--sp-sub);
-            background: var(--sp-card);
+            font-size: 9px;
+            background: rgba(255, 255, 255, 0.25);
             border-radius: 8px;
-            padding: 2px 7px;
+            padding: 2px 8px;
+            font-weight: 600;
         }
 
+        /* Stats */
         .stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            padding: 12px 16px;
+            gap: 10px;
+            padding: 14px 16px;
         }
 
         .stat-card {
             background: var(--sp-card);
-            border: 1px solid var(--sp-border);
-            border-radius: 10px;
-            padding: 12px;
+            border: 1px solid var(--sp-card-border);
+            border-radius: 12px;
+            padding: 14px;
             text-align: center;
+            box-shadow: var(--sp-shadow);
+            transition: transform 0.15s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-1px);
         }
 
         .stat-num {
-            font-size: 22px;
-            font-weight: 800;
+            font-size: 28px;
+            font-weight: 900;
+        }
+
+        .stat-num.orange {
             color: var(--sp-accent);
         }
 
+        .stat-num.blue {
+            color: var(--sp-blue);
+        }
+
         .stat-label {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--sp-sub);
             margin-top: 2px;
             text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
         }
 
+        /* Section */
         .section {
             padding: 12px 16px;
         }
 
         .section-title {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             color: var(--sp-sub);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .placeholder {
-            text-align: center;
-            padding: 30px 20px;
-            color: var(--sp-sub);
-            font-size: 12px;
-        }
-
-        .placeholder-icon {
-            font-size: 32px;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .exchange-rate {
-            text-align: center;
-            font-size: 11px;
-            color: var(--sp-sub);
-            padding: 8px;
-            border-top: 1px solid var(--sp-border);
-        }
-
-        .exchange-rate span {
-            color: var(--sp-accent);
-            font-weight: 700;
+        .section-title::before {
+            content: '';
+            width: 3px;
+            height: 12px;
+            background: var(--sp-accent);
+            border-radius: 2px;
         }
 
         .divider {
             height: 1px;
             background: var(--sp-border);
-            margin: 4px 16px;
+            margin: 0 16px;
         }
 
-        .info {
+        /* Analytics content area */
+        #product-info {
+            background: var(--sp-card);
+            border: 1px solid var(--sp-card-border);
+            border-radius: 12px;
+            padding: 16px;
+            min-height: 80px;
+            box-shadow: var(--sp-shadow);
+        }
+
+        .placeholder {
+            text-align: center;
+            padding: 20px 10px;
+            color: var(--sp-sub);
+            font-size: 12px;
+        }
+
+        .placeholder-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+            display: block;
+            opacity: 0.6;
+        }
+
+        /* === TOOLTIP CSS (з content.js) === */
+        .tt-row {
+            margin-bottom: 8px;
+        }
+
+        .tt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3px;
+            font-size: 12px;
+        }
+
+        .tt-pts {
+            color: #d35400;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .tt-bars {
+            display: flex;
+            gap: 2px;
+            height: 5px;
+        }
+
+        .tt-bar {
+            flex: 1;
+            background: var(--sp-section);
+            border-radius: 2px;
+        }
+
+        .tt-bar.filled {
+            background: var(--sp-blue);
+        }
+
+        .tt-div {
+            border-top: 1px dashed var(--sp-border);
+            margin: 10px 0;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--sp-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .exchange {
             font-size: 11px;
             color: var(--sp-sub);
-            padding: 12px 16px;
-            line-height: 1.5;
+        }
+
+        .exchange span {
+            color: var(--sp-accent);
+            font-weight: 700;
+        }
+
+        .tip {
+            font-size: 10px;
+            color: var(--sp-sub);
+            padding: 8px 16px;
+            line-height: 1.6;
+        }
+
+        .tip b {
+            color: var(--sp-text);
         }
     </style>
 </head>
 
 <body>
     <div class="header">
-        <h1>🛒 Temu Pro</h1>
-        <span class="version">v14.0</span>
+        <div class="header-left">
+            <h1>🛒 Temu Pro</h1>
+            <span class="version">v14.0</span>
+        </div>
     </div>
     <div class="stats">
         <div class="stat-card">
-            <div class="stat-num" id="stat-processed">—</div>
+            <div class="stat-num orange" id="stat-processed">—</div>
             <div class="stat-label">Оброблено</div>
         </div>
         <div class="stat-card">
-            <div class="stat-num" id="stat-avg-score">—</div>
+            <div class="stat-num blue" id="stat-avg-score">—</div>
             <div class="stat-label">Сер. бал</div>
         </div>
     </div>
     <div class="divider"></div>
     <div class="section">
-        <div class="section-title">📊 Аналітика</div>
+        <div class="section-title">Аналітика товару</div>
         <div id="product-info">
             <div class="placeholder">
                 <span class="placeholder-icon">🔍</span>
-                Наведіть курсор на товар,<br>щоб побачити його оцінку
+                Наведіть курсор на товар,<br>щоб побачити аналітику
             </div>
         </div>
     </div>
     <div class="divider"></div>
-    <div class="info">
+    <div class="tip">
         💡 <b>Налаштування</b> доступні через плаваючу панель на сторінці Temu (вкладка ⚙️ Налаштування).
     </div>
-    <div class="exchange-rate">
-        Курс: <span id="exchange-rate">завантаження...</span>
+    <div class="footer">
+        <div class="exchange">Курс: <span id="exchange-rate">…</span></div>
     </div>
     <script src="sidepanel.js"></script>
 </body>
