@@ -11,7 +11,7 @@
 const puppeteer = require('puppeteer-core');
 
 // Налаштування
-const CDP_URL = 'http://127.0.0.1:9222';
+const CDP_URL = 'http://127.0.0.1:9223';
 const TEMU_URL = 'https://www.temu.com/ua';
 
 async function run() {
