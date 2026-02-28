@@ -529,14 +529,18 @@
         }
     }
 
-    window.addEventListener('load', () => {
+    // Єдина точка входу — захист від подвійного setInterval
+    let booted = false;
+    function boot() {
+        if (booted) return;
+        booted = true;
         createMainWindow();
         setInterval(processCards, 800);
-    });
+    }
 
-    // Якщо сторінка вже завантажена
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        createMainWindow();
-        setInterval(processCards, 800);
+        boot();
+    } else {
+        window.addEventListener('load', boot, { once: true });
     }
 })();

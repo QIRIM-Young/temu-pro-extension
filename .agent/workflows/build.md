@@ -12,7 +12,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue temu-pro-extension.zip
 
 2. Створити zip з потрібними файлами (без node_modules та тестів):
 ```
-Compress-Archive -Path manifest.json,background.js,content.js,icons -DestinationPath temu-pro-extension.zip -Force
+Compress-Archive -Path manifest.json,background.js,content.js,sidepanel.html,sidepanel.js,icons -DestinationPath temu-pro-extension.zip -Force
 ```
 
 3. Вивести розмір:
