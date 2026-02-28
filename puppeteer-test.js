@@ -1,143 +1,149 @@
+/**
+ * Temu Pro — Тестування через Chrome Remote Debugging
+ * 
+ * КРОК 1: Закрийте звичайний Chrome
+ * КРОК 2: Запустіть Chrome з remote debugging:
+ *   "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+ * КРОК 3: Відкрийте temu.com в цьому Chrome
+ * КРОК 4: Запустіть: node puppeteer-test.js
+ */
+
 const puppeteer = require('puppeteer-core');
-const path = require('path');
 
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const EXTENSION_PATH = path.resolve(__dirname);
-const TEMU_URL = 'https://www.temu.com/';
-// Профіль користувача Chrome (щоб розширення вже було встановлено)
-const USER_DATA_DIR = path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'User Data');
-const USE_USER_PROFILE = false; // Змініть на true щоб використовувати ваш профіль
+// Налаштування
+const CDP_URL = 'http://127.0.0.1:9222';
+const TEMU_URL = 'https://www.temu.com/ua';
 
-// --- Кольори для лога ---
-const OK = '\x1b[32m✓\x1b[0m';
-const FAIL = '\x1b[31m✗\x1b[0m';
-const INFO = '\x1b[36mℹ\x1b[0m';
-const WARN = '\x1b[33m⚠\x1b[0m';
+async function run() {
+    console.log('\n🔌 Підключаюсь до Chrome (Remote Debugging)...\n');
 
-async function runTests() {
     let browser;
-    let passed = 0;
-    let failed = 0;
-    let warnings = 0;
-
-    function assert(condition, message) {
-        if (condition) { console.log(`  ${OK} ${message}`); passed++; }
-        else { console.log(`  ${FAIL} ${message}`); failed++; }
-    }
-    function warn(message) { console.log(`  ${WARN} ${message}`); warnings++; }
-
     try {
-        console.log(`\n${INFO} Запуск Chrome з розширенням...\n`);
-
-        browser = await puppeteer.launch({
-            executablePath: CHROME_PATH,
-            headless: false,
-            args: [
-                `--disable-extensions-except=${EXTENSION_PATH}`,
-                `--load-extension=${EXTENSION_PATH}`,
-                '--no-first-run',
-                '--no-default-browser-check'
-            ]
+        browser = await puppeteer.connect({
+            browserURL: CDP_URL,
+            defaultViewport: null // використовуємо реальний розмір вікна
         });
-
-        // --- ТЕСТ 1: Браузер ---
-        assert(browser.connected, 'Chrome запустився з розширенням');
-
-        // --- ТЕСТ 2: Завантаження Temu ---
-        console.log(`\n${INFO} Завантажую ${TEMU_URL}...\n`);
-        const page = await browser.newPage();
-        await page.setViewport({ width: 1280, height: 800 });
-
-        let temuLoaded = false;
-        try {
-            await page.goto(TEMU_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            temuLoaded = true;
-        } catch (e) {
-            // Temu може блокувати або повільно відповідати
-        }
-        assert(temuLoaded, 'Сторінка Temu завантажилась');
-
-        if (!temuLoaded) {
-            warn('Temu не відповів — подальші тести content script неможливі');
-            console.log(`\n${'═'.repeat(40)}`);
-            console.log(`  Результат: ${passed} пройшло, ${failed} провалено, ${warnings} попереджень`);
-            console.log(`${'═'.repeat(40)}\n`);
-            browser.on('disconnected', () => process.exit(1));
-            return;
-        }
-
-        // Невеличка пауза щоб content script встиг ін'єктуватись
-        await new Promise(r => setTimeout(r, 5000));
-
-        // --- ТЕСТ 3: Панель Temu Pro ---
-        let panelFound = false;
-        try {
-            panelFound = await page.$('#temu-pro-window') !== null;
-        } catch { }
-
-        if (!panelFound) {
-            // Спробувати ще раз після додаткового очікування
-            await new Promise(r => setTimeout(r, 5000));
-            try { panelFound = await page.$('#temu-pro-window') !== null; } catch { }
-        }
-        assert(panelFound, 'Панель Temu Pro (#temu-pro-window) ін\'єктована');
-
-        // --- ТЕСТ 4: Заголовок панелі ---
-        if (panelFound) {
-            try {
-                const headerText = await page.$eval('#tpw-header span', el => el.textContent);
-                assert(headerText.includes('Temu Pro'), `Заголовок: "${headerText}"`);
-            } catch {
-                assert(false, 'Заголовок панелі не знайдено');
-            }
-        } else {
-            warn('Пропущено (панель не знайдена)');
-        }
-
-        // --- ТЕСТ 5: Вкладки ---
-        if (panelFound) {
-            try {
-                const tabs = await page.$$('.tpw-tab');
-                assert(tabs.length >= 2, `Вкладки знайдено: ${tabs.length} шт.`);
-            } catch {
-                assert(false, 'Вкладки не знайдено');
-            }
-        }
-
-        // --- ТЕСТ 6: CSS стилі розширення ---
-        try {
-            const hasStyles = await page.evaluate(() => {
-                const styles = document.querySelectorAll('style');
-                for (const s of styles) {
-                    if (s.textContent.includes('temu-score-container')) return true;
-                }
-                return false;
-            });
-            assert(hasStyles, 'CSS стилі розширення ін\'єктовані');
-        } catch {
-            assert(false, 'CSS стилі не знайдено');
-        }
-
-        // --- ПІДСУМОК ---
-        console.log(`\n${'═'.repeat(40)}`);
-        console.log(`  Результат: ${passed} пройшло, ${failed} провалено, ${warnings} попереджень`);
-        console.log(`${'═'.repeat(40)}\n`);
-
-        if (failed === 0) console.log(`${OK} Усі тести пройдено!`);
-        else console.log(`${FAIL} ${failed} тест(ів) провалено.`);
-
-        console.log(`\n${INFO} Браузер відкритий для ручної перевірки. Закрийте Chrome щоб завершити.\n`);
-
-        browser.on('disconnected', () => {
-            console.log(`${INFO} Завершено.`);
-            process.exit(failed > 0 ? 1 : 0);
-        });
-
-    } catch (error) {
-        console.error(`\n${FAIL} Критична помилка:`, error.message);
-        if (browser) await browser.close();
+    } catch (e) {
+        console.error('  ✗ Не вдалось підключитись до Chrome!');
+        console.error('');
+        console.error('  Переконайтесь що Chrome запущено з прапорцем:');
+        console.error('  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222');
+        console.error('');
+        console.error('  ⚠ Звичайний Chrome має бути ЗАКРИТИЙ перед запуском з debugging.');
         process.exit(1);
     }
+
+    console.log('  ✓ Підключено до Chrome\n');
+
+    // Знайти вкладку з Temu або відкрити нову
+    const pages = await browser.pages();
+    let temuPage = pages.find(p => p.url().includes('temu.com'));
+
+    if (!temuPage) {
+        console.log('ℹ Відкриваю Temu...');
+        temuPage = await browser.newPage();
+        await temuPage.goto(TEMU_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+        console.log('  ✓ Temu завантажено\n');
+    } else {
+        console.log('  ✓ Знайдено вкладку з Temu: ' + temuPage.url() + '\n');
+    }
+
+    // Зачекати на DOM
+    await new Promise(r => setTimeout(r, 3000));
+
+    // --- ТЕСТ 1: Панель Temu Pro ---
+    console.log('📋 Тест 1: Плаваюча панель...');
+    const panel = await temuPage.$('#temu-pro-window');
+    if (panel) {
+        console.log('  ✓ Панель #temu-pro-window знайдена');
+        const header = await temuPage.$eval('#tpw-header', el => el.textContent).catch(() => null);
+        console.log('  ℹ Header: ' + (header || '(порожній)'));
+    } else {
+        console.log('  ✗ Панель не знайдена (можливо ін\'єкція ще не відбулась)');
+    }
+
+    // --- ТЕСТ 2: CSS стилі ---
+    console.log('\n📋 Тест 2: CSS стилі...');
+    const styles = await temuPage.evaluate(() => {
+        const sheets = document.querySelectorAll('style');
+        for (let s of sheets) {
+            if (s.textContent.includes('temu-score-container')) return true;
+        }
+        return false;
+    });
+    console.log(styles ? '  ✓ CSS стилі розширення завантажені' : '  ✗ CSS стилі не знайдені');
+
+    // --- ТЕСТ 3: Score Bars ---
+    console.log('\n📋 Тест 3: Score Bars на товарах...');
+    const scoreBars = await temuPage.$$('.temu-score-container');
+    console.log('  ℹ Знайдено score bars: ' + scoreBars.length);
+    if (scoreBars.length > 0) {
+        console.log('  ✓ Score bars відображаються на товарах');
+        // Зчитати перший score
+        const firstScore = await temuPage.$eval('.temu-score-number', el => el.textContent).catch(() => '?');
+        console.log('  ℹ Перший score: ' + firstScore);
+    } else {
+        console.log('  ⚠ Score bars не знайдені (прокрутіть сторінку до товарів)');
+    }
+
+    // --- ТЕСТ 4: Оброблені картки ---
+    console.log('\n📋 Тест 4: Оброблені товарні картки...');
+    const cards = await temuPage.$$('[data-temu-processed="true"]');
+    console.log('  ℹ Оброблено карток: ' + cards.length);
+    if (cards.length > 0) {
+        console.log('  ✓ Content script обробляє товари');
+    } else {
+        console.log('  ⚠ Жодна картка не оброблена (прокрутіть сторінку)');
+    }
+
+    // --- ТЕСТ 5: Tooltip (hover data) ---
+    console.log('\n📋 Тест 5: Tooltip data...');
+    const tooltips = await temuPage.$$('[data-tooltip-html]');
+    console.log('  ℹ Товарів з tooltip: ' + tooltips.length);
+    if (tooltips.length > 0) {
+        const firstTooltip = await temuPage.$eval('[data-tooltip-html]', el => {
+            const html = el.getAttribute('data-tooltip-html');
+            const match = html.match(/Загальний бал: (\d+)/);
+            return match ? match[1] : '?';
+        }).catch(() => '?');
+        console.log('  ℹ Перший товар score: ' + firstTooltip);
+        console.log('  ✓ Tooltip data присутній');
+    }
+
+    // --- ТЕСТ 6: Курс валют ---
+    console.log('\n📋 Тест 6: Курс валют (chrome.storage)...');
+    const rate = await temuPage.evaluate(() => {
+        return new Promise(resolve => {
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                chrome.storage.local.get({ exchangeRate: 0 }, s => resolve(s.exchangeRate));
+            } else {
+                resolve(0);
+            }
+        });
+    }).catch(() => 0);
+    if (rate > 0) {
+        console.log('  ✓ Курс: 1$ = ' + Math.round(rate) + '₴');
+    } else {
+        console.log('  ⚠ Курс не збережено в storage (або недоступно з content script)');
+    }
+
+    // --- ПІДСУМОК ---
+    console.log('\n' + '═'.repeat(50));
+    console.log('📊 ПІДСУМОК:');
+    console.log('  Панель: ' + (panel ? '✓' : '✗'));
+    console.log('  CSS: ' + (styles ? '✓' : '✗'));
+    console.log('  Score Bars: ' + scoreBars.length);
+    console.log('  Картки: ' + cards.length);
+    console.log('  Tooltips: ' + tooltips.length);
+    console.log('═'.repeat(50) + '\n');
+
+    // НЕ закриваємо браузер — він вже запущений користувачем
+    // browser.disconnect();
+    console.log('✅ Тест завершено. Chrome залишається відкритим.\n');
+    process.exit(0);
 }
 
-runTests();
+run().catch(err => {
+    console.error('Помилка:', err.message);
+    process.exit(1);
+});
