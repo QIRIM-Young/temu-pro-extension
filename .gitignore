@@ -1,3 +1,16 @@
 node_modules/
 package-lock.json
 *.zip
+
+# Tests & Logs
+tests/*.js
+!tests/puppeteer-test.js
+tests/*.png
+tests/screenshots_global/
+tests/ai_workflows/
+tests/test_output.txt
+
+# Local files
+.vs/
+.vscode/
+*.log

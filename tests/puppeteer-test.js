@@ -3,7 +3,7 @@
  * 
  * КРОК 1: Закрийте звичайний Chrome
  * КРОК 2: Запустіть Chrome з remote debugging:
- *   "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+ *   "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223
  * КРОК 3: Відкрийте temu.com в цьому Chrome
  * КРОК 4: Запустіть: node puppeteer-test.js
  */
@@ -27,7 +27,7 @@ async function run() {
         console.error('  ✗ Не вдалось підключитись до Chrome!');
         console.error('');
         console.error('  Переконайтесь що Chrome запущено з прапорцем:');
-        console.error('  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222');
+        console.error('  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9223');
         console.error('');
         console.error('  ⚠ Звичайний Chrome має бути ЗАКРИТИЙ перед запуском з debugging.');
         process.exit(1);
@@ -42,10 +42,25 @@ async function run() {
     if (!temuPage) {
         console.log('ℹ Відкриваю Temu...');
         temuPage = await browser.newPage();
+
+        // Слухати помилки
+        temuPage.on('console', msg => {
+            if (msg.type() === 'error' && msg.text().includes('[Temu Pro]')) {
+                console.log('PAGE ERROR:', msg.text());
+            }
+        });
+
         await temuPage.goto(TEMU_URL, { waitUntil: 'networkidle2', timeout: 30000 });
         console.log('  ✓ Temu завантажено\n');
     } else {
         console.log('  ✓ Знайдено вкладку з Temu: ' + temuPage.url() + '\n');
+
+        // Слухати помилки на існуючій сторінці теж
+        temuPage.on('console', msg => {
+            if (msg.type() === 'error') {
+                console.log('PAGE ERROR:', msg.text());
+            }
+        });
     }
 
     // Зачекати на DOM
@@ -58,6 +73,19 @@ async function run() {
         console.log('  ✓ Панель #temu-pro-window знайдена');
         const header = await temuPage.$eval('#tpw-header', el => el.textContent).catch(() => null);
         console.log('  ℹ Header: ' + (header || '(порожній)'));
+
+        // Вимикаємо фільтри для чесного тесту
+        try {
+            await temuPage.evaluate(() => {
+                const cb = document.getElementById('cb-filters');
+                if (cb && cb.checked) {
+                    cb.checked = false;
+                    cb.dispatchEvent(new Event('change'));
+                }
+            });
+            console.log('  ℹ Фільтри вимкнено для тесту');
+            await new Promise(r => setTimeout(r, 1000)); // чекаємо оновлення DOM
+        } catch (e) { }
     } else {
         console.log('  ✗ Панель не знайдена (можливо ін\'єкція ще не відбулась)');
     }
@@ -67,7 +95,7 @@ async function run() {
     const styles = await temuPage.evaluate(() => {
         const sheets = document.querySelectorAll('style');
         for (let s of sheets) {
-            if (s.textContent.includes('temu-score-container')) return true;
+            if (s.textContent.includes('tpw-score-container')) return true;
         }
         return false;
     });
@@ -75,12 +103,12 @@ async function run() {
 
     // --- ТЕСТ 3: Score Bars ---
     console.log('\n📋 Тест 3: Score Bars на товарах...');
-    const scoreBars = await temuPage.$$('.temu-score-container');
+    const scoreBars = await temuPage.$$('.tpw-score-container');
     console.log('  ℹ Знайдено score bars: ' + scoreBars.length);
     if (scoreBars.length > 0) {
         console.log('  ✓ Score bars відображаються на товарах');
         // Зчитати перший score
-        const firstScore = await temuPage.$eval('.temu-score-number', el => el.textContent).catch(() => '?');
+        const firstScore = await temuPage.$eval('.tpw-score-number', el => el.textContent).catch(() => '?');
         console.log('  ℹ Перший score: ' + firstScore);
     } else {
         console.log('  ⚠ Score bars не знайдені (прокрутіть сторінку до товарів)');
@@ -88,7 +116,7 @@ async function run() {
 
     // --- ТЕСТ 4: Оброблені картки ---
     console.log('\n📋 Тест 4: Оброблені товарні картки...');
-    const cards = await temuPage.$$('[data-temu-processed="true"]');
+    const cards = await temuPage.$$('[data-processed="true"]');
     console.log('  ℹ Оброблено карток: ' + cards.length);
     if (cards.length > 0) {
         console.log('  ✓ Content script обробляє товари');
@@ -103,10 +131,20 @@ async function run() {
     if (tooltips.length > 0) {
         const firstTooltip = await temuPage.$eval('[data-tooltip-html]', el => {
             const html = el.getAttribute('data-tooltip-html');
-            const match = html.match(/Загальний бал: (\d+)/);
-            return match ? match[1] : '?';
-        }).catch(() => '?');
-        console.log('  ℹ Перший товар score: ' + firstTooltip);
+            const scoreMatch = html.match(/Загальний бал: (\d+)/);
+            const salesMatch = html.match(/Продажі:.*<b>(.*?)<\/b>/);
+            const reviewsMatch = html.match(/Відгуки:.*<b>(.*?)<\/b>/);
+            return {
+                score: scoreMatch ? scoreMatch[1] : '?',
+                sales: salesMatch ? salesMatch[1] : '?',
+                reviews: reviewsMatch ? reviewsMatch[1] : '?',
+                rawContent: html.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim()
+            };
+        }).catch(() => ({ score: '?', sales: 'error', reviews: 'error', rawContent: '' }));
+        console.log('  ℹ Перший товар score: ' + firstTooltip.score);
+        console.log('  ℹ Продажі (парсинг): ' + firstTooltip.sales);
+        console.log('  ℹ Відгуки (парсинг): ' + firstTooltip.reviews);
+        console.log('  ℹ Текст тултипа: ' + firstTooltip.rawContent);
         console.log('  ✓ Tooltip data присутній');
     }
 

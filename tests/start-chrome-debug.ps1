@@ -4,7 +4,7 @@ Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "  Temu Pro - Chrome з Remote Debugging" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Запускаю Chrome з --remote-debugging-port=9222" -ForegroundColor Yellow
+Write-Host "Запускаю Chrome з --remote-debugging-port=9223" -ForegroundColor Yellow
 Write-Host ""
 
 $chromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -14,7 +14,7 @@ if (!(Test-Path $chromePath)) {
     exit 1
 }
 
-Start-Process $chromePath -ArgumentList "--remote-debugging-port=9222"
+Start-Process $chromePath -ArgumentList "--remote-debugging-port=9223"
 
 Write-Host "Chrome запущено!" -ForegroundColor Green
 Write-Host ""
