@@ -465,23 +465,23 @@
 
             /* Єдине вікно (Панель) */
             #temu-pro-window {
-                position: fixed; background: rgba(255, 255, 255, 0.85);
-                -webkit-backdrop-filter: blur(20px);
-                backdrop-filter: blur(20px);
-                border: 1px solid rgba(0,0,0,0.08);
+                position: fixed; background: rgba(255, 255, 255, 0.65);
+                -webkit-backdrop-filter: blur(24px) saturate(1.5);
+                backdrop-filter: blur(24px) saturate(1.5);
+                border: 1px solid rgba(255, 255, 255, 0.6);
                 border-radius: 16px; z-index: 9999999;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+                box-shadow: 0 10px 40px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
                 font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
                 width: 340px; min-width: 240px; max-width: 500px;
                 max-height: 90vh;
                 color: #222; display: flex; flex-direction: column;
                 transition: box-shadow 0.3s ease;
                 overflow: visible;
-                --tpw-bg: rgba(255,255,255,0.85);
+                --tpw-bg: rgba(255,255,255,0.65);
                 container-type: inline-size;
                 container-name: tpw-panel;
-                --tpw-border: rgba(0,0,0,0.08);
-                --tpw-track-bg: #e5e5ea;
+                --tpw-border: rgba(255, 255, 255, 0.6);
+                --tpw-track-bg: rgba(0,0,0,0.06);
             }
             #temu-pro-window:hover {
                 box-shadow: 0 12px 48px rgba(0,0,0,0.16), 0 4px 12px rgba(0,0,0,0.08);
