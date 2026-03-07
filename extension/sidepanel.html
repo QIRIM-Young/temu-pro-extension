@@ -3,189 +3,180 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="color-scheme" content="light dark">
-    <title>Temu Pro — Панель</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temu Pro Panel</title>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&subset=cyrillic,latin&display=swap">
     <style>
-        :root {
-            color-scheme: light dark;
-            --sp-bg: #fafbfc;
-            --sp-text: #1a1a2e;
-            --sp-header: linear-gradient(135deg, #ff6b00 0%, #ff8533 100%);
-            --sp-border: rgba(0, 0, 0, 0.06);
-            --sp-card: #fff;
-            --sp-card-border: rgba(0, 0, 0, 0.05);
-            --sp-sub: #8892a4;
-            --sp-accent: #ff6b00;
-            --sp-accent2: #e55b00;
-            --sp-green: #22c55e;
-            --sp-blue: #3b82f6;
-            --sp-red: #ef4444;
-            --sp-yellow: #f59e0b;
-            --sp-section: #f3f4f6;
-            --sp-input: #fff;
-            --sp-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --sp-bg: #0d1117;
-                --sp-text: #e6edf3;
-                --sp-header: linear-gradient(135deg, #da520d 0%, #ff6b00 100%);
-                --sp-border: rgba(255, 255, 255, 0.06);
-                --sp-card: #161b22;
-                --sp-card-border: rgba(255, 255, 255, 0.06);
-                --sp-sub: #7d8590;
-                --sp-section: #1c2128;
-                --sp-input: #21262d;
-                --sp-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-            }
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        .tpw-weights-bar { display:flex; width:100%; height:20px; border-radius:10px; overflow:visible; position:relative; margin-bottom:8px; }
+        .tpw-weight-segment { height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:9px; font-weight:700; transition: width 0.1s; letter-spacing: -0.3px; position: relative; z-index: 1; }
+        .tpw-weight-segment:first-child { border-radius: 10px 0 0 10px; }
+        .tpw-weight-segment:last-child { border-radius: 0 10px 10px 0; }
+        .tpw-weight-divider { width:14px; height:100%; cursor:ew-resize; position:relative; z-index:2; margin-left:-7px; margin-right:-7px; display:flex; align-items:center; justify-content:center; }
+        .tpw-weight-divider::after { content:''; display:block; width:3px; height:0px; background:rgba(255,255,255,0.9); border-radius:2px; box-shadow:0 0 4px rgba(0,0,0,0.15); transition:height 0.2s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s; opacity:0; }
+        .tpw-algorithm-settings:hover .tpw-weight-divider::after { height:14px; opacity:1; }
+        .tpw-weight-divider:hover::after { background:#fff; height:16px !important; box-shadow:0 0 6px rgba(0,0,0,0.25); }
+        .tpw-weights-bar-wrap { position: relative; margin-bottom: 8px; }
+        .tpw-weights-ticks { position: absolute; top: 0; left: 0; right: 0; height: 20px; pointer-events: none; z-index: 0; }
+        .tpw-weights-tick { position: absolute; top: 2px; width: 1px; height: 16px; background: rgba(0,0,0,0.08); border-radius: 1px; }
+        .tpw-weights-tick:nth-child(1) { left: 12.5%; } .tpw-weights-tick:nth-child(2) { left: 25%; } .tpw-weights-tick:nth-child(3) { left: 37.5%; } .tpw-weights-tick:nth-child(4) { left: 50%; } .tpw-weights-tick:nth-child(5) { left: 62.5%; } .tpw-weights-tick:nth-child(6) { left: 75%; } .tpw-weights-tick:nth-child(7) { left: 87.5%; }
+        .tpw-weights-tick-label { display: none; }
+        .tpw-weights-inputs { display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; }
+        .tpw-weights-inputs .st-row { width:48%; background:var(--bg-el, #f8f9fa); border-radius:6px; padding:4px 8px; box-sizing:border-box; border:1px solid var(--border, #eee); }
+        body.st-dark-mode .tpw-weights-inputs .st-row { background:#1e1e1e; border-color:#333; }
+        .tpw-weights-inputs .st-label { font-size:11px; margin:0; }
+        .tpw-weights-inputs .st-num-input { width:36px; padding:2px; font-size:12px; text-align:right; border:none; background:transparent; font-weight:600; color:var(--text, #333); }
+        body.st-dark-mode .tpw-weights-inputs .st-num-input { color:#f1f1f1; }
+        .tpw-header-text-container span#tpw-build-time { font-size: 10px; color: #999; }
+        .flex-row-gap6 { display: flex; align-items: center; gap: 6px; }
+        .st-section.st-section-nobg { margin-bottom: 0; box-shadow: none; border: none; background: transparent; padding: 0; }
+        #seg-disc { background: #9b59b6; }
+        #seg-rat { background: #f1c40f; }
+        #seg-sal { background: #e74c3c; }
+        #seg-rev { background: #3498db; }
+        .st-label-disc { color: #9b59b6; }
+        .st-label-rat { color: #f1c40f; }
+        .st-label-sal { color: #e74c3c; }
+        .st-label-rev { color: #3498db; }
+        .dual-slider-inputs-col { display: flex; flex-direction: column; gap: 4px; width: 50px; align-items: flex-end; }
+        .dual-slider-inputs-col .st-num-input { width: 100%; height: 18px; font-size: 10px; }
+        .dual-slider-inputs-col .st-num-editable { width: 100%; height: 18px; font-size: 10px; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--sp-bg);
-            color: var(--sp-text);
-            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #222;
+            overflow-x: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- IFRAME MODE STYLES --- */
+        body.iframe-mode {
+            background: rgba(245, 245, 250, 0.92);
+            -webkit-backdrop-filter: blur(20px) saturate(1.8);
+            backdrop-filter: blur(20px) saturate(1.8);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        body.iframe-mode #tpw-header {
+            background: transparent;
+            border-bottom-color: rgba(0,0,0,0.05);
+        }
+        body.iframe-mode #tpw-tabs {
+            background: transparent;
+        }
+        body.iframe-mode #tpw-body {
+            background: transparent;
+        }
+        body.iframe-mode #btn-reload-sp {
+            display: none;
+        }
+        /* Collapse/Sidepanel buttons — only visible in iframe mode */
+        .tpw-iframe-btn {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 14px;
+            color: #8b95a5;
+            line-height: 1;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .tpw-iframe-btn:hover { background: rgba(0,0,0,0.06); }
+        body.iframe-mode .tpw-iframe-btn { display: inline-flex; align-items: center; justify-content: center; }
+        /* Collapsed state */
+        #tpw-tabs.collapsed, #tpw-body.collapsed { display: none; }
+
+        #tpw-header {
+            font-weight: 600;
             font-size: 13px;
-            line-height: 1.5;
-        }
-
-        /* Header */
-        .header {
-            background: var(--sp-header);
-            color: #fff;
-            padding: 16px 20px;
+            padding: 10px 15px;
+            background: #fff;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
             display: flex;
-            align-items: center;
             justify-content: space-between;
-        }
-
-        .header-left {
-            display: flex;
             align-items: center;
-            gap: 10px;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
-        .header h1 {
-            font-size: 16px;
-            font-weight: 800;
-            letter-spacing: -0.3px;
+        #tpw-tabs {
+            display: flex;
+            padding: 8px 12px;
+            margin: 0;
+            background: #fff;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
         }
 
-        .version {
-            font-size: 9px;
-            background: rgba(255, 255, 255, 0.25);
+        .tpw-segmented-control {
+            background: #e5e5ea;
             border-radius: 8px;
-            padding: 2px 8px;
-            font-weight: 600;
-        }
-
-        /* Stats */
-        .stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            padding: 14px 16px;
-        }
-
-        .stat-card {
-            background: var(--sp-card);
-            border: 1px solid var(--sp-card-border);
-            border-radius: 12px;
-            padding: 14px;
-            text-align: center;
-            box-shadow: var(--sp-shadow);
-            transition: transform 0.15s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-1px);
-        }
-
-        .stat-num {
-            font-size: 28px;
-            font-weight: 900;
-        }
-
-        .stat-num.orange {
-            color: var(--sp-accent);
-        }
-
-        .stat-num.blue {
-            color: var(--sp-blue);
-        }
-
-        .stat-label {
-            font-size: 9px;
-            color: var(--sp-sub);
-            margin-top: 2px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-weight: 600;
-        }
-
-        /* Section */
-        .section {
-            padding: 12px 16px;
-        }
-
-        .section-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--sp-sub);
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            margin-bottom: 10px;
             display: flex;
-            align-items: center;
-            gap: 6px;
+            width: 100%;
+            position: relative;
+            padding: 2px;
         }
 
-        .section-title::before {
-            content: '';
-            width: 3px;
-            height: 12px;
-            background: var(--sp-accent);
-            border-radius: 2px;
-        }
-
-        .divider {
-            height: 1px;
-            background: var(--sp-border);
-            margin: 0 16px;
-        }
-
-        /* Analytics content area */
-        #product-info {
-            background: var(--sp-card);
-            border: 1px solid var(--sp-card-border);
-            border-radius: 12px;
-            padding: 16px;
-            min-height: 80px;
-            box-shadow: var(--sp-shadow);
-        }
-
-        .placeholder {
+        .tpw-tab {
+            flex: 1;
             text-align: center;
-            padding: 20px 10px;
-            color: var(--sp-sub);
+            padding: 6px 0;
             font-size: 12px;
+            font-weight: 600;
+            color: #8b95a5;
+            cursor: pointer;
+            border-radius: 6px;
+            z-index: 2;
+            position: relative;
+            transition: color 0.2s ease;
         }
 
-        .placeholder-icon {
-            font-size: 28px;
-            margin-bottom: 8px;
+        .tpw-tab.active {
+            color: #000;
+        }
+
+        .tpw-tab-bg {
+            position: absolute;
+            top: 2px;
+            bottom: 2px;
+            width: calc(50% - 2px);
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+            z-index: 1;
+        }
+
+        .tpw-tab[data-tab="info"].active~.tpw-tab-bg {
+            transform: translateX(0);
+        }
+
+        .tpw-tab[data-tab="settings"].active~.tpw-tab-bg {
+            transform: translateX(100%);
+            width: calc(50% - 2px);
+        }
+
+        #tpw-body {
+            flex: 1;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        .tpw-content {
+            display: none;
+            padding: 15px;
+        }
+
+        .tpw-content.active {
             display: block;
-            opacity: 0.6;
         }
 
-        /* === TOOLTIP CSS (з content.js) === */
         .tt-row {
             margin-bottom: 8px;
         }
@@ -200,7 +191,7 @@
 
         .tt-pts {
             color: #d35400;
-            font-weight: bold;
+            font-weight: 600;
             font-size: 11px;
         }
 
@@ -212,84 +203,819 @@
 
         .tt-bar {
             flex: 1;
-            background: var(--sp-section);
-            border-radius: 2px;
+            background: #edf0f3;
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
         }
 
-        .tt-bar.filled {
-            background: var(--sp-blue);
+        .tt-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            transition: width 0.3s ease;
+        }
+
+        .tt-icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 14px;
+            border-radius: 3px;
+            margin-right: 4px;
+            vertical-align: middle;
         }
 
         .tt-div {
-            border-top: 1px dashed var(--sp-border);
+            border-top: 1px dashed #e0e4e8;
             margin: 10px 0;
         }
 
-        /* Footer */
-        .footer {
-            padding: 12px 16px;
-            border-top: 1px solid var(--sp-border);
+        .tt-bonus {
+            color: #27ae60;
+            font-size: 11px;
+            text-align: right;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        /* CSS Toggle Pill */
+        .st-toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .st-toggle-wrap input {
+            display: none;
+        }
+
+        .st-toggle {
+            width: 38px;
+            height: 22px;
+            background: #e9e9ea;
+            border-radius: 11px;
+            position: relative;
+            transition: background 0.3s ease;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            border: 1px solid transparent;
+        }
+
+        .st-toggle::after {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            width: 18px;
+            height: 18px;
+            background: #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0.5px 1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .st-toggle-wrap input:active+.st-toggle::after {
+            width: 22px;
+        }
+
+        .st-toggle-wrap input:checked+.st-toggle {
+            background: #34c759;
+        }
+
+        .st-toggle-wrap input:checked+.st-toggle::after {
+            transform: translateX(18px);
+        }
+
+        .st-toggle-wrap input:checked:active+.st-toggle::after {
+            transform: translateX(14px);
+        }
+
+        .st-toggle-label {
+            font-size: 11px;
+            color: #444;
+            font-weight: 500;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .st-section {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border: 1px solid #eef0f2;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .st-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #8b95a5;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .exchange {
+        .tpw-reset-btn {
+            font-size: 9px;
+            color: #0b7bff;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(11, 123, 255, 0.1);
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .tpw-reset-btn:hover {
+            background: #0b7bff;
+            color: #fff;
+        }
+
+        .st-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            gap: 8px;
+        }
+
+        .st-label {
+            width: 100px;
+            font-size: 12px;
+            flex-shrink: 0;
+            color: #444;
+            font-weight: 500;
+        }
+
+        .st-row input[type="range"].single-range {
+            flex: 1;
+            min-width: 80px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            margin: 0 8px;
+        }
+
+        .st-row input[type="range"].single-range::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: var(--track-bg, #e0e4e8) !important;
+            border-radius: 2px;
+        }
+
+        .st-row input[type="range"].single-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
+            opacity: 1;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            margin-top: -5px;
+            border: none;
+        }
+
+        .st-row:hover input[type="range"].single-range::-webkit-slider-thumb {
+            background: #fdfdfd;
+        }
+
+        .st-row input[type="range"].single-range::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .st-row input[type="range"].single-range:active::-webkit-slider-thumb {
+            transform: scale(1.0);
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .st-num-input {
+            width: 50px;
+            height: 22px;
+            box-sizing: border-box;
+            padding: 2px 4px;
+            font-size: 12px;
+            border: 1px solid #dde1e6;
+            border-radius: 6px;
+            text-align: center;
+            font-family: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            background: #ffffff;
+        }
+
+        .st-num-input:focus {
+            border-color: #34c759;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.15);
+        }
+
+        .st-num-editable.wn-disc .st-num-display, .st-num-editable.wn-disc .st-num-input { color: #9b59b6 !important; }
+        .st-num-editable.wn-rat .st-num-display, .st-num-editable.wn-rat .st-num-input { color: #d4a706 !important; }
+        .st-num-editable.wn-sal .st-num-display, .st-num-editable.wn-sal .st-num-input { color: #e74c3c !important; }
+        .st-num-editable.wn-rev .st-num-display, .st-num-editable.wn-rev .st-num-input { color: #3498db !important; }
+
+        /* Reset Button */
+        .tpw-reset-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            min-height: 22px;
+            flex-shrink: 0;
+            cursor: pointer;
+            border-radius: 50%;
+            background: rgba(11, 123, 255, 0.08);
+            transition: all 0.2s ease;
+            opacity: 0.6;
+            box-sizing: border-box;
+        }
+
+        .tpw-reset-btn:hover {
+            background: rgba(11, 123, 255, 0.18);
+            opacity: 1;
+            transform: rotate(-45deg);
+        }
+
+        .tpw-reset-btn svg {
+            pointer-events: none;
+        }
+
+        .dual-slider-container {
+            position: relative;
+            flex: 1;
+            height: 20px;
+            margin: 0 8px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .dual-slider-container input[type="range"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            pointer-events: none;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            height: 4px;
+            margin-top: 8px;
+        }
+
+        .dual-slider-container input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: transparent;
+            border-radius: 2px;
+        }
+
+        .dual-slider-container input[type="range"]::-webkit-slider-thumb {
+            pointer-events: auto;
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
+            opacity: 1;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            margin-top: -5px;
+            border: none;
+        }
+
+        .st-row:hover .dual-slider-container input[type="range"]::-webkit-slider-thumb {
+            background: #fdfdfd;
+        }
+
+        .dual-slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .dual-slider-container input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(1.0);
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .dual-slider-track {
+            position: absolute;
+            top: 8px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #e0e4e8;
+            border-radius: 2px;
+            z-index: 0;
+        }
+
+        .dual-slider-highlight {
+            position: absolute;
+            top: 8px;
+            height: 4px;
+            background: #34c759;
+            border-radius: 2px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Акордеон Налаштування алгоритму */
+        .tpw-accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-weight: 600;
             font-size: 11px;
-            color: var(--sp-sub);
+            border: 1px solid #eef0f2;
+            transition: background 0.2s;
         }
 
-        .exchange span {
-            color: var(--sp-accent);
-            font-weight: 700;
+        .tpw-accordion-header:hover {
+            background: #f0f2f5;
         }
 
-        .tip {
+        .tpw-accordion-body {
+            display: none;
+            padding: 8px 5px 2px 5px;
+        }
+
+        .tpw-accordion-body.open {
+            display: block;
+        }
+
+        .tpw-accordion-icon {
+            transition: transform 0.3s ease;
             font-size: 10px;
-            color: var(--sp-sub);
-            padding: 8px 16px;
-            line-height: 1.6;
         }
 
-        .tip b {
-            color: var(--sp-text);
+        .tpw-accordion-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .tpw-header-text-container {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .tpw-header-title {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tpw-build-time {
+            font-size: 9px;
+            color: #aaa;
+            font-weight: normal;
+        }
+
+        .tpw-header-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #tpw-currency-toggle {
+            background: #e5e5ea;
+            border-radius: 12px;
+            display: inline-flex;
+            padding: 2px;
+            position: relative;
+            cursor: pointer;
+            width: 84px;
+            height: 24px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        #currency-active-bg {
+            position: absolute;
+            top: 2px;
+            bottom: 2px;
+            left: 2px;
+            width: 40px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.25s cubic-bezier(0.4, 0.0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .st-segment-btn {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b95a5;
+            border-radius: 10px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: color 0.2s;
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .st-handle {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 14px;
+            height: 14px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: ew-resize;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.1);
+            opacity: 1;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+        }
+
+        .st-handle:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+            background: #fdfdfd;
+        }
+
+        .tpw-weight-divider:active .st-handle {
+            transform: translate(-50%, -50%) scale(1.0);
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        #btn-reload-sp {
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+        }
+
+        .tpw-tab svg {
+            vertical-align: middle;
+            margin-right: 2px;
+        }
+
+        #tpw-info-inject {
+            text-align: center;
+            padding: 15px 10px;
+            color: #888;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        #tpw-info-inject svg {
+            margin-bottom: 6px;
+            display: inline-block;
+        }
+
+        #tpw-info-inject span {
+            display: block;
+        }
+
+        .tpw-accordion-header-text {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        #tpw-alg-accordion-body .st-section {
+            margin-bottom: 0;
+            box-shadow: none;
+            border: none;
+            background: transparent;
+            padding: 0;
+        }
+
+        .st-title-text {
+            display: flex;
+            align-items: center;
+        }
+
+        .st-title-icon {
+            margin-right: 4px;
+        }
+
+        .st-row.align-center {
+            align-items: center;
+        }
+
+        .dual-slider-highlight {
+            position: absolute;
+            top: 8px;
+            height: 4px;
+            background: #34c759;
+            border-radius: 2px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .dual-slider-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 50px;
+            flex-shrink: 0;
+        }
+
+        /* Click-to-edit pencil fields */
+        .st-num-editable {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            width: 50px;
+            height: 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: transparent;
+            border: 1px solid transparent;
+            transition: border-color 0.2s, background 0.2s;
+            padding-right: 18px;
+            box-sizing: border-box;
+        }
+
+        .st-num-editable:hover {
+            border-color: #dde1e6;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .st-num-editable .st-num-display {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .st-num-editable .st-num-pencil {
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0;
+            transition: opacity 0.15s;
+            pointer-events: none;
+            width: 14px;
+            height: 14px;
+        }
+
+        .st-num-editable:hover .st-num-pencil {
+            opacity: 0.6;
+        }
+
+        .st-num-editable.editing {
+            border-color: #34c759;
+            background: #fff;
+            padding-right: 4px;
+            justify-content: center;
+        }
+
+        .st-num-editable.editing .st-num-pencil {
+            display: none;
+        }
+
+        .st-num-editable.editing .st-num-display {
+            display: none;
+        }
+
+        .st-num-editable .st-num-input {
+            display: none;
+        }
+
+        .st-num-editable.editing .st-num-input {
+            display: block;
+            border: none;
+            outline: none;
+            background: transparent;
+            box-shadow: none;
+            width: 100%;
+            height: 100%;
+            text-align: center;
         }
     </style>
 </head>
 
 <body>
-    <div class="header">
-        <div class="header-left">
-            <h1>🛒 Temu Pro</h1>
-            <span class="version">v14.0</span>
+    <div id="tpw-header">
+        <div id="tpw-drag-handle" class="tpw-header-text-container">
+            <span class="tpw-header-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" fill="#ff6c00" opacity="0.9" />
+                    <line x1="3" y1="6" x2="21" y2="6" stroke="#fff" stroke-width="1.5" />
+                    <path d="M16 10a4 4 0 0 1-8 0" stroke="#fff" stroke-width="2" stroke-linecap="round" />
+                </svg>
+                Temu Pro
+            </span>
+            <span id="tpw-build-time">v15.4 • 07.03.2026</span>
+        </div>
+        <div class="tpw-header-controls">
+            <div id="tpw-currency-toggle">
+                <div id="currency-active-bg">
+                </div>
+                <div class="st-segment-btn st-active" data-currency="uah">
+                    UAH</div>
+                <div class="st-segment-btn" data-currency="usd">
+                    USD</div>
+            </div>
+            <label class="st-toggle-wrap" title="Увімк.">
+                <input type="checkbox" id="cb-main-toggle" checked>
+                <div class="st-toggle"></div>
+            </label>
+            <button id="btn-sidepanel" class="tpw-iframe-btn" title="Бічна панель">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0097e6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+            </button>
+            <button id="btn-collapse" class="tpw-iframe-btn" title="Згорнути">—</button>
+            <button id="btn-reload-sp" title="Оновити панель">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b95a5" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+            </button>
         </div>
     </div>
-    <div class="stats">
-        <div class="stat-card">
-            <div class="stat-num orange" id="stat-processed">—</div>
-            <div class="stat-label">Оброблено</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-num blue" id="stat-avg-score">—</div>
-            <div class="stat-label">Сер. бал</div>
+
+    <div id="tpw-tabs">
+        <div class="tpw-segmented-control">
+            <div class="tpw-tab active" data-tab="info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="12" width="4" height="9" rx="1" fill="#3498db" opacity="0.7" />
+                    <rect x="10" y="7" width="4" height="14" rx="1" fill="#3498db" opacity="0.85" />
+                    <rect x="17" y="3" width="4" height="18" rx="1" fill="#3498db" />
+                </svg> <span data-i18n="analytics">Аналітика</span></div>
+            <div class="tpw-tab" data-tab="settings"><svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" stroke="#e74c3c" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round"></polygon>
+                </svg> <span data-i18n="filters">Фільтри</span></div>
+            <div class="tpw-tab-bg"></div>
         </div>
     </div>
-    <div class="divider"></div>
-    <div class="section">
-        <div class="section-title">Аналітика товару</div>
-        <div id="product-info">
-            <div class="placeholder">
-                <span class="placeholder-icon">🔍</span>
-                Наведіть курсор на товар,<br>щоб побачити аналітику
+
+    <div id="tpw-body">
+        <div id="tpw-info" class="tpw-content active">
+            <div id="tpw-info-inject">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span data-i18n="hoverHint">Наведіть курсор на будь-який товар,<br>щоб побачити оцінку</span>
+            </div>
+
+            <div class="tpw-accordion-header" id="tpw-alg-accordion-btn">
+                <span class="tpw-accordion-header-text">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b95a5" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg> <span data-i18n="algSettings">Налаштування алгоритму</span>
+                </span>
+                <div class="flex-row-gap6">
+                    <span class="tpw-reset-btn" id="btn-reset-alg" title="Скинути налаштування"><svg width="13"
+                            height="13" viewBox="0 0 24 24" fill="none" stroke="#0b7bff" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="1 4 1 10 7 10" />
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                        </svg></span>
+                    <span class="tpw-accordion-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg></span>
+                </div>
+            </div>
+            <div class="tpw-accordion-body" id="tpw-alg-accordion-body">
+                <div class="st-section st-section-nobg">
+                    <div class="tpw-weights-bar-wrap">
+                    <div class="tpw-weights-bar" id="tpw-weights-bar">
+                        <div class="tpw-weight-segment" id="seg-disc"></div>
+                        <div class="tpw-weight-divider" data-idx="0"><div class="st-handle" title="Скоригувати вагу"></div></div>
+                        <div class="tpw-weight-segment" id="seg-rat"></div>
+                        <div class="tpw-weight-divider" data-idx="1"><div class="st-handle" title="Скоригувати вагу"></div></div>
+                        <div class="tpw-weight-segment" id="seg-sal"></div>
+                        <div class="tpw-weight-divider" data-idx="2"><div class="st-handle" title="Скоригувати вагу"></div></div>
+                        <div class="tpw-weight-segment" id="seg-rev"></div>
+                    </div>
+                    <div class="tpw-weights-ticks">
+                        <div class="tpw-weights-tick"></div>
+                        <div class="tpw-weights-tick"></div>
+                        <div class="tpw-weights-tick"></div>
+                        <div class="tpw-weights-tick"></div>
+                        <div class="tpw-weights-tick"></div>
+                        <div class="tpw-weights-tick"></div>
+                        <div class="tpw-weights-tick"></div>
+                    </div>
+                    </div>
+                    <div class="tpw-weights-inputs">
+                        <div class="st-row"><span class="st-label st-label-disc" data-i18n="discount">Знижка:</span> <input type="number" id="wn-disc" class="st-num-input" value="20" max="80"></div>
+                        <div class="st-row"><span class="st-label st-label-rat" data-i18n="rating">Рейтинг:</span> <input type="number" id="wn-rat" class="st-num-input" value="20" max="80"></div>
+                        <div class="st-row"><span class="st-label st-label-sal" data-i18n="sales">Продажі:</span> <input type="number" id="wn-sal" class="st-num-input" value="20" max="80"></div>
+                        <div class="st-row"><span class="st-label st-label-rev" data-i18n="reviews">Відгуки:</span> <input type="number" id="wn-rev" class="st-num-input" value="20" max="80"></div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="divider"></div>
-    <div class="tip">
-        💡 <b>Налаштування</b> доступні через плаваючу панель на сторінці Temu (вкладка ⚙️ Налаштування).
-    </div>
-    <div class="footer">
-        <div class="exchange">Курс: <span id="exchange-rate">…</span></div>
+
+        <div id="tpw-settings" class="tpw-content">
+            <div class="st-section">
+                <div class="st-title">
+                    <span class="st-title-text"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                            stroke="#e74c3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="st-title-icon">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg> <span data-i18n="filters">Фільтри</span></span>
+                    <div class="flex-row-gap6">
+                        <span class="tpw-reset-btn" id="btn-reset-filters" title="Скинути налаштування"><svg width="13"
+                                height="13" viewBox="0 0 24 24" fill="none" stroke="#0b7bff" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="1 4 1 10 7 10" />
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                            </svg></span>
+                        <label class="st-toggle-wrap">
+                            <span class="st-toggle-label" data-i18n="active">Активні</span>
+                            <input type="checkbox" id="cb-filters">
+                            <div class="st-toggle"></div>
+                        </label>
+                    </div>
+                </div>
+                <div class="st-row align-center">
+                    <span class="st-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1abc9c"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg> <span data-i18n="priceRange">Ціни:</span></span>
+                    <div class="dual-slider-container">
+                        <div class="dual-slider-track"></div>
+                        <div class="dual-slider-highlight"></div>
+                        <input type="range" id="fs-pmin" min="0" max="10000" step="10" value="0" title="Мін. ціна">
+                        <input type="range" id="fs-pmax" min="0" max="10000" step="10" value="5000" title="Макс. ціна">
+                    </div>
+                    <div class="dual-slider-inputs dual-slider-inputs-col">
+                        <input type="number" id="f-min-price" class="st-num-input" value="0" title="Мін. ціна">
+                        <input type="number" id="f-max-price" class="st-num-input" value="5000" title="Макс. ціна">
+                    </div>
+                </div>
+                <div class="st-row"><span class="st-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="12" width="4" height="9" rx="1" fill="#0b7bff" opacity="0.7" />
+                            <rect x="10" y="7" width="4" height="14" rx="1" fill="#0b7bff" opacity="0.85" />
+                            <rect x="17" y="3" width="4" height="18" rx="1" fill="#0b7bff" />
+                        </svg> <span data-i18n="minScore">Балів:</span></span> <input type="range" id="fs-score"
+                        class="single-range" min="0" max="100" value="0"> <input type="number" id="fn-score"
+                        class="st-num-input" value="0"></div>
+                <div class="st-row"><span class="st-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                            stroke="#9b59b6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="9" r="2" />
+                            <circle cx="15" cy="15" r="2" />
+                            <line x1="19" y1="5" x2="5" y2="19" />
+                        </svg> <span data-i18n="minDiscount">Знижка %:</span></span> <input type="range" id="fs-disc"
+                        class="single-range" min="0" max="90" step="5" value="0"> <input type="number" id="fn-disc"
+                        class="st-num-input" value="0"></div>
+                <div class="st-row"><span class="st-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                                fill="#f1c40f" opacity="0.9" />
+                        </svg> <span data-i18n="minRating">Рейтинг:</span></span> <input type="range" id="fs-rat"
+                        class="single-range" min="0" max="5" step="0.1" value="4.0"> <input type="number" id="fn-rat"
+                        class="st-num-input" step="0.1" value="4.0"></div>
+                <div class="st-row"><span class="st-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 17L9 11L13 15L21 7" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M15 7H21V13" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg> <span data-i18n="minSales">Продажів:</span></span> <input type="range" id="fs-sal"
+                        class="single-range" min="0" max="10000" step="100" value="100"> <input type="number"
+                        id="fn-sal" class="st-num-input" value="100"></div>
+                <div class="st-row"><span class="st-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="#3498db"
+                                opacity="0.85" />
+                        </svg> <span data-i18n="minReviews">Відгуків:</span></span> <input type="range" id="fs-rev"
+                        class="single-range" min="0" max="500" step="10" value="10"> <input type="number" id="fn-rev"
+                        class="st-num-input" value="10"></div>
+            </div>
+        </div>
     </div>
     <script src="sidepanel.js"></script>
 </body>
