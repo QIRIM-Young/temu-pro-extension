@@ -1633,10 +1633,21 @@
         });
     }
 
-    function processCards() {
+    function processCards(force) {
         if (!isScriptEnabled) {
             removeAllTooltips();
             return;
+        }
+
+        // Якщо force=true (зміна ваг/налаштувань), очищаємо всі мітки обробки для перерахунку
+        if (force) {
+            document.querySelectorAll('[data-processed="true"]').forEach(el => {
+                el.removeAttribute('data-processed');
+                el.removeAttribute('data-raw-text');
+                el.removeAttribute('data-raw-html');
+                const bar = el.querySelector(':scope > .tpw-score-container');
+                if (bar) bar.remove();
+            });
         }
 
         // Видаляємо сліди старого Tampermonkey скрипта

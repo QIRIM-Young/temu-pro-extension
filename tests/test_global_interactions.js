@@ -46,32 +46,43 @@ async function runGlobalTest() {
         console.log("Очікую 10 секунд на завантаження сторінки та розширення...");
         await delay(10000);
 
-        // 1. Пошук карток
-        const cardsCount = await page.evaluate(() => document.querySelectorAll('div[data-tooltip-html]').length);
+        // 1. Пошук карток (з retry + scroll для lazy-load)
+        let cardsCount = 0;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            cardsCount = await page.evaluate(() => document.querySelectorAll('div[data-tooltip-html]').length);
+            if (cardsCount > 0) break;
+            console.log(`Спроба ${attempt + 1}: карток ще немає, скролимо вниз...`);
+            await page.evaluate(() => window.scrollBy(0, 800));
+            await delay(3000);
+        }
         if (cardsCount === 0) {
-            console.log("Карток не знайдено! Тест неможливий.");
+            console.log("Карток не знайдено після 5 спроб! Тест неможливий.");
             return;
         }
         console.log(`Знайдено ${cardsCount} карток.`);
 
         // Знаходимо картку з ненульовим балом (якщо є)
-        await page.evaluate(() => {
+        const cardInfo = await page.evaluate(() => {
             const cards = document.querySelectorAll('div[data-tooltip-html]');
-            let bestCard = cards[0];
+            const scores = [];
+            let bestCard = null;
             for (const c of cards) {
                 const html = c.getAttribute('data-tooltip-html') || '';
-                // Шукаємо бал більше 0 у donut chart
                 const m = html.match(/font-size:18px[^>]*>\s*(\d+)/);
-                if (m && parseInt(m[1]) > 0) {
+                const score = m ? parseInt(m[1]) : -1;
+                scores.push(score);
+                if (score > 0 && !bestCard) {
                     bestCard = c;
-                    break;
                 }
             }
-            if(bestCard) {
-                bestCard.scrollIntoView({behavior: 'smooth', block: 'center'});
-                bestCard.setAttribute('id', 'test-card-target');
+            const target = bestCard || cards[0];
+            if (target) {
+                target.scrollIntoView({behavior: 'smooth', block: 'center'});
+                target.setAttribute('id', 'test-card-target');
             }
+            return { total: cards.length, firstScores: scores.slice(0, 10), hasTarget: !!target };
         });
+        console.log(`Картки: ${cardInfo.total}, перші 10 балів: [${cardInfo.firstScores.join(', ')}], target: ${cardInfo.hasTarget}`);
         await delay(2000);
 
         // 2. Отримуємо оцінку ДО налаштувань
@@ -131,21 +142,15 @@ async function runGlobalTest() {
         await delay(1000);
         await page.screenshot({ path: path.join(SCREENSHOT_DIR, '2_accordion_open.png') });
 
-        // Міняємо вагу знижки на 0%
-        console.log("Встановлюємо Знижка = 0%...");
+        // Міняємо ВСІ ваги на 0 напряму через chrome.storage (UI нормалізує суму до 80)
+        console.log("Встановлюємо всі ваги = 0 через storage...");
         await frame.evaluate(() => {
-            const input = document.getElementById('wn-disc');
-            const slider = document.getElementById('ws-disc');
-            if(input) {
-                input.value = 0;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            if(slider) {
-                slider.value = 0;
-                slider.dispatchEvent(new Event('input', { bubbles: true }));
-                slider.dispatchEvent(new Event('change', { bubbles: true }));
-            }
+            chrome.storage.local.set({
+                wDiscount: 0,
+                wRating: 0,
+                wSales: 0,
+                wReviews: 0
+            });
         });
         await delay(2000); // Чекаємо debounce та IPC
 
