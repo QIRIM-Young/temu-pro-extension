@@ -972,6 +972,13 @@
                 panel.style.display = 'none';
                 try { chrome.runtime.sendMessage({ action: 'openSidePanel' }); } catch(ignore) {}
             }
+            else if (e.data.type === 'TPW_RESIZE') {
+                if (!isManuallyResized && !isPanelCollapsed && !panel.classList.contains('tpw-maximized-y')) {
+                    const maxHeight = window.innerHeight - 40;
+                    // height should be exactly as requested, but maxed at maxHeight
+                    panel.style.height = Math.min(e.data.height, maxHeight) + 'px';
+                }
+            }
         });
 
 
@@ -1707,14 +1714,8 @@
                 const bar = el.querySelector(':scope > .tpw-score-container');
                 if (bar) bar.remove();
             });
+            // Не ховаємо iframe повністю, щоб користувач міг увімкнути скрипт назад через тумблер!
             
-            // Сховати iframe, якщо відкритий
-            const iframe = document.getElementById('tpw-iframe');
-            if (iframe) {
-                iframe.style.opacity = '0';
-                iframe.style.pointerEvents = 'none';
-            }
-
             const disabledHtml = `<div style="text-align:center; padding: 40px 10px; color: #888; font-size: 12px; line-height: 1.5;"><span style="font-size: 20px; display:block; margin-bottom: 6px;">🚫</span>Розширення вимкнено</div>`;
             sendToIframe({type: 'TPW_HOVER_INFO', html: disabledHtml});
             try { chrome.runtime.sendMessage({ action: 'hoverInfo', html: disabledHtml }); } catch (ignore) { }
