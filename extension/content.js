@@ -1733,9 +1733,35 @@
 
                 const parseNum = (str) => parseFloat(str.replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
 
-                const priceEl = product.querySelector('._2myxWHLi, ._3D8vQd_w, [aria-label*="ціна"]');
-                const rrpEl = product.querySelector('._3TAPHDOX, ._2mE_o3v_');
+                // --- ЦІНА: Каскадний пошук з fallback ---
+                let priceEl = product.querySelector('._2myxWHLi, ._3D8vQd_w, ._3QZ0ZQdo, [aria-label*="ціна"]');
+                let rrpEl = product.querySelector('._3TAPHDOX, ._2mE_o3v_');
                 const extraSaveEl = product.querySelector('._1LLbpUTn');
+
+                // Fallback: текстовий пошук ціни, якщо CSS-селектори не спрацювали
+                if (!priceEl) {
+                    const priceContainer = Array.from(product.querySelectorAll('div, span')).find(el => {
+                        if (el.children.length > 4) return false;
+                        const t = el.textContent.trim();
+                        if (t.length > 30) return false;
+                        // Шукаємо числа з валютою (₴, $, грн)
+                        return (/\d+[.,]\d{2}\s*₴/.test(t) || /₴\s*\d+[.,]\d{2}/.test(t) ||
+                                /\$\s*\d+[.,]\d{2}/.test(t) || /\d+[.,]\d{2}\s*грн/.test(t));
+                    });
+                    if (priceContainer) priceEl = priceContainer;
+                }
+
+                // Fallback RRP: шукаємо закреслений текст як стару ціну
+                if (!rrpEl) {
+                    rrpEl = product.querySelector('span[style*="line-through"], del, s');
+                    if (!rrpEl) {
+                        const strikeEl = Array.from(product.querySelectorAll('span, div')).find(el => {
+                            const s = getComputedStyle(el);
+                            return s.textDecoration.includes('line-through') && /\d+[.,]\d{2}/.test(el.textContent);
+                        });
+                        if (strikeEl) rrpEl = strikeEl;
+                    }
+                }
 
                 const pEls = [priceEl, rrpEl, extraSaveEl].filter(Boolean);
                 pEls.forEach(el => {
@@ -1750,9 +1776,27 @@
                 let rrp = rrpEl ? parseNum(rrpEl.getAttribute('data-raw-text')) : 0;
                 let extraSave = extraSaveEl ? parseNum(extraSaveEl.getAttribute('data-raw-text')) : 0;
 
+                // Якщо ціна все ще 0, спробуємо витягти з усього тексту картки
+                if (price === 0) {
+                    const fullText = product.textContent;
+                    const priceMatch = fullText.match(/(\d+[.,]\d{2})\s*₴/) || fullText.match(/\$\s*(\d+[.,]\d{2})/) || fullText.match(/(\d+[.,]\d{2})\s*грн/);
+                    if (priceMatch) {
+                        price = parseFloat(priceMatch[1].replace(',', '.')) || 0;
+                        rawPriceText = priceMatch[0];
+                    }
+                }
+
                 let isUAH = rawPriceText.includes('₴') || rawPriceText.toLowerCase().includes('грн');
                 let isUSD = rawPriceText.includes('$');
                 let currencySymbol = isUAH ? '₴' : (isUSD ? '$' : '');
+
+                // Якщо валюту не знайдено в rawPriceText, перевіряємо весь текст картки
+                if (!isUAH && !isUSD) {
+                    const ft = product.textContent;
+                    isUAH = ft.includes('₴') || ft.toLowerCase().includes('грн');
+                    isUSD = ft.includes('$');
+                    currencySymbol = isUAH ? '₴' : (isUSD ? '$' : '');
+                }
 
                 // Автоматичне підлаштування лімітів повзунка ціни під валюту сторінки
                 if (!pageCurrencyDetected && price > 0) {

@@ -41,10 +41,10 @@ async function runGlobalTest() {
         await extPage.close();
         console.log("Розширення оновлено.");
 
-        console.log("Перехід на Temu...");
-        await page.goto('https://www.temu.com', { waitUntil: 'load', timeout: 60000 });
-        console.log("Очікую 8 секунд на завантаження сторінки та розширення...");
-        await delay(8000);
+        console.log("Перехід на Temu (пошук товарів)...");
+        await page.goto('https://www.temu.com/search_result.html?search_key=shoes', { waitUntil: 'load', timeout: 60000 });
+        console.log("Очікую 10 секунд на завантаження сторінки та розширення...");
+        await delay(10000);
 
         // 1. Пошук карток
         const cardsCount = await page.evaluate(() => document.querySelectorAll('div[data-tooltip-html]').length);
@@ -54,11 +54,22 @@ async function runGlobalTest() {
         }
         console.log(`Знайдено ${cardsCount} карток.`);
 
+        // Знаходимо картку з ненульовим балом (якщо є)
         await page.evaluate(() => {
-            const c = document.querySelectorAll('div[data-tooltip-html]')[0];
-            if(c) {
-                c.scrollIntoView({behavior: 'smooth', block: 'center'});
-                c.setAttribute('id', 'test-card-target');
+            const cards = document.querySelectorAll('div[data-tooltip-html]');
+            let bestCard = cards[0];
+            for (const c of cards) {
+                const html = c.getAttribute('data-tooltip-html') || '';
+                // Шукаємо бал більше 0 у donut chart
+                const m = html.match(/font-size:18px[^>]*>\s*(\d+)/);
+                if (m && parseInt(m[1]) > 0) {
+                    bestCard = c;
+                    break;
+                }
+            }
+            if(bestCard) {
+                bestCard.scrollIntoView({behavior: 'smooth', block: 'center'});
+                bestCard.setAttribute('id', 'test-card-target');
             }
         });
         await delay(2000);
@@ -82,7 +93,11 @@ async function runGlobalTest() {
         // Dump the actual product card HTML to understand why priceEl, etc. are null
         const cardOuterHtml = await page.evaluate(() => {
             const el = document.getElementById('test-card-target');
-            return el && el.parentElement ? el.parentElement.innerHTML : 'null';
+            if(!el) return 'null';
+            // Return inner string just omitting the massive base64 attributes and tooltip
+            const clone = el.cloneNode(true);
+            clone.removeAttribute('data-tooltip-html');
+            return clone.innerHTML;
         });
         console.log(`CARD OUTER HTML START:\n${cardOuterHtml.substring(0, 4000)}\n...CARD OUTER HTML END`);
 
