@@ -150,19 +150,34 @@ async function run() {
 
     // --- ТЕСТ 6: Курс валют ---
     console.log('\n📋 Тест 6: Курс валют (chrome.storage)...');
-    const rate = await temuPage.evaluate(() => {
-        return new Promise(resolve => {
-            if (typeof chrome !== 'undefined' && chrome.storage) {
-                chrome.storage.local.get({ exchangeRate: 0 }, s => resolve(s.exchangeRate));
-            } else {
-                resolve(0);
-            }
-        });
-    }).catch(() => 0);
+    let rate = 0;
+    try {
+        const targets = await browser.targets();
+        const extTarget = targets.find(t => t.url().includes('chrome-extension://'));
+        if (extTarget) {
+            const extUrl = extTarget.url();
+            const extId = extUrl.split('/')[2];
+            const extPage = await browser.newPage();
+            await extPage.goto(`chrome-extension://${extId}/sidepanel.html`);
+            rate = await extPage.evaluate(() => {
+                return new Promise(resolve => {
+                    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                        chrome.storage.local.get({ exchangeRate: 0 }, s => resolve(s.exchangeRate));
+                    } else {
+                        resolve(0);
+                    }
+                });
+            });
+            await extPage.close();
+        }
+    } catch (e) {
+        console.error('  ⚠ Помилка отримання курсу з сторінки розширення:', e.message);
+    }
+    
     if (rate > 0) {
-        console.log('  ✓ Курс: 1$ = ' + Math.round(rate) + '₴');
+        console.log('  ✓ Курс (з background/sidepanel): 1$ = ' + Number(rate).toFixed(4) + '₴');
     } else {
-        console.log('  ⚠ Курс не збережено в storage (або недоступно з content script)');
+        console.log('  ⚠ Курс не збережено в storage (або недоступно з test-скрипта)');
     }
 
     // --- ПІДСУМОК ---

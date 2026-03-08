@@ -373,16 +373,21 @@
         .st-row input[type="range"].single-range::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 6px;
+            height: 16px;
             background: #ffffff;
-            border-radius: 50%;
+            border-radius: 4px;
             cursor: pointer;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
-            opacity: 1;
+            opacity: 0;
             transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            margin-top: -5px;
-            border: none;
+            margin-top: -6px;
+            border: 1px solid #e0e4e8;
+        }
+
+        .st-row:hover input[type="range"].single-range::-webkit-slider-thumb,
+        .st-row input[type="range"].single-range:active::-webkit-slider-thumb {
+            opacity: 1;
         }
 
         .st-row:hover input[type="range"].single-range::-webkit-slider-thumb {
@@ -484,16 +489,21 @@
             pointer-events: auto;
             -webkit-appearance: none;
             appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 6px;
+            height: 16px;
             background: #ffffff;
-            border-radius: 50%;
+            border-radius: 4px;
             cursor: pointer;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
-            opacity: 1;
+            opacity: 0;
             transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            margin-top: -5px;
-            border: none;
+            margin-top: -6px;
+            border: 1px solid #e0e4e8;
+        }
+
+        .st-row:hover .dual-slider-container input[type="range"]::-webkit-slider-thumb,
+        .dual-slider-container input[type="range"]:active::-webkit-slider-thumb {
+            opacity: 1;
         }
 
         .st-row:hover .dual-slider-container input[type="range"]::-webkit-slider-thumb {
@@ -618,6 +628,9 @@
             z-index: 1;
             pointer-events: none;
         }
+        #tpw-currency-toggle.is-usd #currency-active-bg {
+            transform: translateX(40px);
+        }
 
         .st-segment-btn {
             flex: 1;
@@ -637,20 +650,30 @@
             cursor: pointer;
         }
 
+        .tpw-weights-ticks {
+            display: none;
+        }
+
         .st-handle {
             position: absolute;
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
-            width: 14px;
-            height: 14px;
+            width: 6px;
+            height: 16px;
             background: #ffffff;
-            border-radius: 50%;
+            border-radius: 4px;
             cursor: ew-resize;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.1);
-            opacity: 1;
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid #e0e4e8;
             z-index: 10;
+        }
+
+        .tpw-weights-bar-wrap:hover .st-handle,
+        .tpw-weight-divider:active .st-handle {
+            opacity: 1;
         }
 
         .st-handle:hover {
@@ -813,6 +836,43 @@
             height: 100%;
             text-align: center;
         }
+
+        /* Bonus Filter Tags */
+        .st-bonus-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #e0e4e8;
+        }
+
+        .st-tag-label {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            background: #f1f3f5;
+            border: 1px solid #dde1e6;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 11px;
+            color: #555;
+            transition: all 0.2s;
+            -webkit-user-select: none;
+            user-select: none;
+            font-weight: 500;
+        }
+
+        .st-tag-label:has(input:checked) {
+            background: #27ae60;
+            color: #fff;
+            border-color: #27ae60;
+            box-shadow: 0 2px 4px rgba(39, 174, 96, 0.2);
+        }
+
+        .st-tag-label input {
+            display: none;
+        }
     </style>
 </head>
 
@@ -827,7 +887,7 @@
                 </svg>
                 Temu Pro
             </span>
-            <span id="tpw-build-time">v15.4 • 07.03.2026</span>
+            <span id="tpw-build-time">v15.4 • 08.03.2026</span>
         </div>
         <div class="tpw-header-controls">
             <div id="tpw-currency-toggle">
@@ -882,31 +942,26 @@
                 <span data-i18n="hoverHint">Наведіть курсор на будь-який товар,<br>щоб побачити оцінку</span>
             </div>
 
-            <div class="tpw-accordion-header" id="tpw-alg-accordion-btn">
-                <span class="tpw-accordion-header-text">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b95a5" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path
-                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
-                        </path>
-                    </svg> <span data-i18n="algSettings">Налаштування алгоритму</span>
-                </span>
-                <div class="flex-row-gap6">
-                    <span class="tpw-reset-btn" id="btn-reset-alg" title="Скинути налаштування"><svg width="13"
-                            height="13" viewBox="0 0 24 24" fill="none" stroke="#0b7bff" stroke-width="2.5"
+            <div class="st-section">
+                <div class="st-title">
+                    <span class="st-title-text">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b95a5" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="1 4 1 10 7 10" />
-                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                        </svg></span>
-                    <span class="tpw-accordion-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="6 9 12 15 18 9" />
-                        </svg></span>
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                            </path>
+                        </svg> <span data-i18n="algSettings">Налаштування алгоритму</span>
+                    </span>
+                    <div class="flex-row-gap6">
+                        <span class="tpw-reset-btn" id="btn-reset-alg" title="Скинути налаштування"><svg width="13"
+                                height="13" viewBox="0 0 24 24" fill="none" stroke="#0b7bff" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="1 4 1 10 7 10" />
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                            </svg></span>
+                    </div>
                 </div>
-            </div>
-            <div class="tpw-accordion-body" id="tpw-alg-accordion-body">
-                <div class="st-section st-section-nobg">
                     <div class="tpw-weights-bar-wrap">
                     <div class="tpw-weights-bar" id="tpw-weights-bar">
                         <div class="tpw-weight-segment" id="seg-disc"></div>
@@ -916,25 +971,12 @@
                         <div class="tpw-weight-segment" id="seg-sal"></div>
                         <div class="tpw-weight-divider" data-idx="2"><div class="st-handle" title="Скоригувати вагу"></div></div>
                         <div class="tpw-weight-segment" id="seg-rev"></div>
+                        <div class="tpw-weight-divider" data-idx="3"><div class="st-handle" title="Скоригувати вагу"></div></div>
+                        <div class="tpw-weight-segment" id="seg-bonuses"></div>
                     </div>
-                    <div class="tpw-weights-ticks">
-                        <div class="tpw-weights-tick"></div>
-                        <div class="tpw-weights-tick"></div>
-                        <div class="tpw-weights-tick"></div>
-                        <div class="tpw-weights-tick"></div>
-                        <div class="tpw-weights-tick"></div>
-                        <div class="tpw-weights-tick"></div>
-                        <div class="tpw-weights-tick"></div>
-                    </div>
-                    </div>
-                    <div class="tpw-weights-inputs">
-                        <div class="st-row"><span class="st-label st-label-disc" data-i18n="discount">Знижка:</span> <input type="number" id="wn-disc" class="st-num-input" value="20" max="80"></div>
-                        <div class="st-row"><span class="st-label st-label-rat" data-i18n="rating">Рейтинг:</span> <input type="number" id="wn-rat" class="st-num-input" value="20" max="80"></div>
-                        <div class="st-row"><span class="st-label st-label-sal" data-i18n="sales">Продажі:</span> <input type="number" id="wn-sal" class="st-num-input" value="20" max="80"></div>
-                        <div class="st-row"><span class="st-label st-label-rev" data-i18n="reviews">Відгуки:</span> <input type="number" id="wn-rev" class="st-num-input" value="20" max="80"></div>
+                    <div class="tpw-weights-ticks"></div>
                     </div>
                 </div>
-            </div>
         </div>
 
         <div id="tpw-settings" class="tpw-content">
@@ -1011,6 +1053,25 @@
                         </svg> <span data-i18n="minReviews">Відгуків:</span></span> <input type="range" id="fs-rev"
                         class="single-range" min="0" max="500" step="10" value="10"> <input type="number" id="fn-rev"
                         class="st-num-input" value="10"></div>
+                
+                <div class="st-bonus-tags">
+                    <label class="st-tag-label">
+                        <input type="checkbox" id="cb-bonus-extra-discount">
+                        <span data-i18n="bonusExtraDiscount">Екстра знижка</span>
+                    </label>
+                    <label class="st-tag-label">
+                        <input type="checkbox" id="cb-bonus-top-rating">
+                        <span data-i18n="bonusTopRating">Топ рейтинг</span>
+                    </label>
+                    <label class="st-tag-label">
+                        <input type="checkbox" id="cb-bonus-star-seller">
+                        <span data-i18n="bonusStarSeller">Зірковий продавець</span>
+                    </label>
+                    <label class="st-tag-label">
+                        <input type="checkbox" id="cb-bonus-imported">
+                        <span data-i18n="bonusImported">Імпортне</span>
+                    </label>
+                </div>
             </div>
         </div>
     </div>

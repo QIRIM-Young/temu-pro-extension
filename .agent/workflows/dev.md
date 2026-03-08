@@ -7,7 +7,7 @@ description: Запустити Chrome з розширенням для ручн
 
 1. Запустити Chrome з розширенням у окремому профілі:
 ```
-Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList "--load-extension=c:\Users\vlift\.gemini\antigravity\scratch\temu_pro_extension","--user-data-dir=$env:TEMP\chrome-temu-dev","https://www.temu.com/"
+Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList "--load-extension=c:\Users\vlift\temu_pro_extension\extension","--user-data-dir=$env:TEMP\chrome-temu-dev","https://www.temu.com/ua"
 ```
 
 2. Перевірити що розширення завантажилось на chrome://extensions/.

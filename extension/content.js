@@ -14,10 +14,17 @@
     let fMinPrice = 0;
     let fMaxPrice = 5000;
 
-    let wDiscount = 25;
-    let wRating = 25;
-    let wSales = 25;
-    let wReviews = 25;
+    // Фільтри по плюшках (true = показувати ЛИШЕ товари з цим бонусом)
+    let fBonusExtraDiscount = false;
+    let fBonusTopRating = false;
+    let fBonusStarSeller = false;
+    let fBonusImported = false;
+
+    let wDiscount = 20;
+    let wRating = 20;
+    let wSales = 20;
+    let wReviews = 20;
+    let wBonuses = 20;
 
     let exchangeRate = 41.0;
     let windowScale = 1.0; // Масштаб плаваючого вікна (0.7 - 1.3)
@@ -41,7 +48,7 @@
     let filterStats = { hiddenCount: 0, lastReset: Date.now() };
 
     // --- SVG ІКОНКИ (Inline, стиль Temu) ---
-    const BUILD_TIME = '07.03 01:55';
+    const BUILD_TIME = '08.03 04:14';
 
     // --- ВИЗНАЧЕННЯ МОВИ ІНТЕРФЕЙСУ ---
     // Стратегія: 1) URL містить '-en' → English, 2) html.lang → 'uk'→Ukrainian, 3) URL /ua → Ukrainian, 4) fallback → English
@@ -145,7 +152,8 @@
         chrome.storage.local.get([
             'isScriptEnabled', 'isPanelCollapsed', 'filtersEnabled',
             'fMinScore', 'fMinDiscount', 'fMinRating', 'fMinSales', 'fMinReviews', 'fMinPrice', 'fMaxPrice',
-            'wDiscount', 'wRating', 'wSales', 'wReviews', 'exchangeRate', 'isSidePanelOpen',
+            'fBonusExtraDiscount', 'fBonusTopRating', 'fBonusStarSeller', 'fBonusImported',
+            'wDiscount', 'wRating', 'wSales', 'wReviews', 'wBonuses', 'exchangeRate', 'isSidePanelOpen',
             'currentCurrencyMax', 'currentCurrencyStep'
         ], (res) => {
             const validNum = (v, defaultVal) => (v !== undefined && !Number.isNaN(v) && v !== null) ? v : defaultVal;
@@ -165,10 +173,16 @@
             if (res.currentCurrencyMax !== undefined) currentCurrencyMax = res.currentCurrencyMax;
             if (res.currentCurrencyStep !== undefined) currentCurrencyStep = res.currentCurrencyStep;
 
-            wDiscount = validNum(res.wDiscount, 25);
-            wRating = validNum(res.wRating, 25);
-            wSales = validNum(res.wSales, 25);
-            wReviews = validNum(res.wReviews, 25);
+            if (res.fBonusExtraDiscount !== undefined) fBonusExtraDiscount = res.fBonusExtraDiscount;
+            if (res.fBonusTopRating !== undefined) fBonusTopRating = res.fBonusTopRating;
+            if (res.fBonusStarSeller !== undefined) fBonusStarSeller = res.fBonusStarSeller;
+            if (res.fBonusImported !== undefined) fBonusImported = res.fBonusImported;
+
+            wDiscount = validNum(res.wDiscount, 20);
+            wRating = validNum(res.wRating, 20);
+            wSales = validNum(res.wSales, 20);
+            wReviews = validNum(res.wReviews, 20);
+            wBonuses = validNum(res.wBonuses, 20);
 
             exchangeRate = validNum(res.exchangeRate, 41.0);
             // isSidePanelOpen не зберігається між сесіями — Side Panel сам повідомить при відкритті
@@ -338,6 +352,10 @@
                 else if (key === 'fMinReviews') { fMinReviews = val; needsReprocess = true; needsUIUpdate = true; }
                 else if (key === 'fMinPrice') { fMinPrice = val; needsReprocess = true; needsUIUpdate = true; }
                 else if (key === 'fMaxPrice') { fMaxPrice = val; needsReprocess = true; needsUIUpdate = true; }
+                else if (key === 'fBonusExtraDiscount') { fBonusExtraDiscount = val; needsReprocess = true; }
+                else if (key === 'fBonusTopRating') { fBonusTopRating = val; needsReprocess = true; }
+                else if (key === 'fBonusStarSeller') { fBonusStarSeller = val; needsReprocess = true; }
+                else if (key === 'fBonusImported') { fBonusImported = val; needsReprocess = true; }
                 else if (key === 'currentCurrencyMax') {
                     currentCurrencyMax = val;
                     const pmin = document.getElementById('fs-pmin'); if (pmin) pmin.max = val;
@@ -438,22 +456,22 @@
 
         const style = document.createElement('style');
         style.textContent = `
-            /* Панель 10 капсул на товарі */
+            /* Donut badge на товарі — 44px, зникає миттєво при ховері */
             .tpw-score-container {
-                position: absolute; top: 0; left: 0; width: 100%; height: 22px;
-                background: rgba(255,255,255,0.92);
-                -webkit-backdrop-filter: blur(6px);
-                backdrop-filter: blur(6px);
-                z-index: 50; border-radius: 0;
-                display: flex; align-items: center; justify-content: space-between;
-                padding: 0 8px; box-sizing: border-box; pointer-events: none;
-                transition: opacity 0.25s ease;
-                overflow: hidden;
+                position: absolute; bottom: 6px; right: 6px;
+                width: 44px; height: 44px;
+                z-index: 50;
+                display: flex; align-items: center; justify-content: center;
+                pointer-events: auto; cursor: pointer;
+                background: rgba(255, 255, 255, 0.90);
+                border-radius: 50%;
+                box-shadow: 0 3px 12px rgba(0,0,0,0.22);
             }
-            .tpw-pills-wrapper { display: flex; gap: 3px; flex: 1; margin-right: 8px; }
-            .tpw-pill { height: 7px; flex: 1; border-radius: 4px; background: #e8ecef; overflow: hidden; position: relative; }
-            .tpw-pill-fill { height: 100%; position: absolute; left: 0; top: 0; transition: width 0.4s cubic-bezier(0.4,0,0.2,1); border-radius: 4px; }
-            .tpw-score-number { font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: 900; letter-spacing: -0.3px; }
+            /* Миттєве зникання — без анімації, без compositing artifact */
+            .tpw-badge-flying .tpw-score-container {
+                display: none !important;
+            }
+            .tpw-donut-badge { display: block; overflow: visible; }
 
             /* Троттлінг скролу (запобіжник Error 429) */
             .tpw-filtered-ghost {
@@ -475,7 +493,7 @@
                 width: 340px; min-width: 240px; max-width: 500px;
                 max-height: 90vh;
                 color: #222; display: flex; flex-direction: column;
-                transition: box-shadow 0.3s ease;
+                /* bez transitions na height — auto-fit без анімації */
                 overflow: visible;
                 --tpw-bg: rgba(255,255,255,0.65);
                 container-type: inline-size;
@@ -552,8 +570,22 @@
 
             #tpw-body { flex: 1; min-height: 0; overflow-y: auto; }
             #tpw-body.collapsed { display: none; }
-            #temu-pro-window.is-collapsed-mode,
-            #temu-pro-window.tpw-maximized-y.is-collapsed-mode { height: auto !important; min-height: 40px !important; max-height: none !important; transition: height 0.3s ease, min-height 0.3s ease; }
+            /* Drag pill: ширша захоплення */
+            .tpw-drag-pill {
+                width: 60px; height: 6px; border-radius: 4px;
+                background: rgba(0,0,0,0.2); margin: 6px auto 2px;
+                cursor: move; flex-shrink: 0; position: relative;
+            }
+            /* Невидима зона влучення — 14px зверхі і 12px знизу */
+            .tpw-drag-pill::before {
+                content: ''; position: absolute;
+                top: -14px; left: -50%; right: -50%;
+                bottom: -12px; cursor: move;
+            }
+            /* Collapsed mode */
+            #temu-pro-window.is-collapsed-mode #tpw-tabs,
+            #temu-pro-window.is-collapsed-mode #tpw-body { display: none !important; }
+            #temu-pro-window.is-collapsed-mode { height: auto !important; min-height: 44px !important; max-height: none !important; }
             #temu-pro-window.is-collapsed-mode .tpw-resize { display: none !important; }
 
             .tpw-content {
@@ -869,19 +901,17 @@
     let _hoverWriteTimer = null;
     function sendToIframe(msg) {
         if (msg.type === 'TPW_HOVER_INFO') {
-            // Debounce записів в storage (макс 1 раз на 100ms)
+            // Debounce записів в storage (макс 1 раз на 50ms)
             clearTimeout(_hoverWriteTimer);
             _hoverWriteTimer = setTimeout(() => {
                 try {
-                    chrome.storage.local.set({ _iframeHoverHtml: msg.html, _iframeHoverTs: Date.now() });
-                } catch(e) {
-                    // Ignore Extension context invalidated errors from reloads
-                }
+                    // Bug 6: передаємо cardId разом з html щоб sidepanel міг порівнювати ID
+                    chrome.storage.local.set({ _iframeHoverHtml: msg.html, _iframeHoverCardId: msg.cardId || '', _iframeHoverTs: Date.now() });
+                } catch(e) { /* Extension context invalidated — safe to ignore */ }
             }, 50);
         } else if (msg.type === 'TPW_SWITCH_TAB') {
             chrome.storage.local.set({ _iframeActiveTab: msg.tab });
         }
-        // Також пробуємо runtime message (для side panel)
         try { chrome.runtime.sendMessage({ action: 'hoverInfo', html: msg.html || '' }); } catch(ignore) {}
     }
 
@@ -899,6 +929,7 @@
         const iframeUrl = chrome.runtime.getURL('sidepanel.html') + '?mode=iframe';
 
         const PANEL_HTML = `
+            <div class="tpw-drag-pill"></div>
             <iframe src="${iframeUrl}" id="tpw-iframe"
                 style="width:100%; height:100%; border:none; flex:1; border-radius:inherit; background:transparent; display:block; min-height:0;"
                 allow="clipboard-write"></iframe>
@@ -914,9 +945,49 @@
         panel.innerHTML = PANEL_HTML;
         document.body.appendChild(panel);
 
-        // --- ДРАГ (ПРИЙОМ ПОВІДОМЛЕНЬ ВІД IFRAME) ---
+        // --- ДРАГ: спільні змінні для pill і iframe ---
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         let isDragging = false;
+
+        // F2: Drag pill mousedown — прямий драг з .tpw-drag-pill (div у content.js, не в iframe)
+        const dragPill = panel.querySelector('.tpw-drag-pill');
+        if (dragPill) {
+            dragPill.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                isDragging = true;
+                pos3 = e.screenX; pos4 = e.screenY;
+                let rect = panel.getBoundingClientRect();
+                panel.style.bottom = 'auto'; panel.style.right = 'auto';
+                panel.style.top = rect.top + 'px'; panel.style.left = rect.left + 'px';
+                let overlay = document.getElementById('tpw-drag-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'tpw-drag-overlay';
+                    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483647;cursor:move;background:transparent;';
+                    document.body.appendChild(overlay);
+                }
+                const onMove = (ev) => {
+                    if (!isDragging) return;
+                    pos1 = pos3 - ev.screenX; pos2 = pos4 - ev.screenY;
+                    pos3 = ev.screenX; pos4 = ev.screenY;
+                    let newTop = panel.offsetTop - pos2, newLeft = panel.offsetLeft - pos1;
+                    newTop = Math.max(0, Math.min(newTop, window.innerHeight - panel.offsetHeight));
+                    newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - panel.offsetWidth));
+                    panel.style.top = newTop + 'px'; panel.style.left = newLeft + 'px';
+                };
+                const onUp = () => {
+                    isDragging = false;
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    const ov = document.getElementById('tpw-drag-overlay');
+                    if (ov) ov.remove();
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        }
+
+        // --- (ПРИЙОМ ПОВІДОМЛЕНЬ ВІД IFRAME) ---
 
         window.addEventListener('message', (e) => {
             if (!e.data || typeof e.data.type !== 'string') return;
@@ -973,10 +1044,14 @@
                 try { chrome.runtime.sendMessage({ action: 'openSidePanel' }); } catch(ignore) {}
             }
             else if (e.data.type === 'TPW_RESIZE') {
-                if (!isManuallyResized && !isPanelCollapsed && !panel.classList.contains('tpw-maximized-y')) {
-                    const maxHeight = window.innerHeight - 40;
-                    // height should be exactly as requested, but maxed at maxHeight
-                    panel.style.height = Math.min(e.data.height, maxHeight) + 'px';
+                // Ігноруємо забруднену висоту — panel вже має height:auto + flex
+                // Авто-розмір макс 90vh забезпечується CSS max-height
+                if (!isManuallyResized && e.data.height > 0) {
+                    const maxH = window.innerHeight - 40;
+                    const newH = Math.min(e.data.height, maxH);
+                    // Прямо без анімації: наносимо style з ізольованою пропертією transition:none
+                    panel.style.transition = 'none';
+                    panel.style.height = newH + 'px';
                 }
             }
         });
@@ -1050,11 +1125,9 @@
 
     // --- АВТО-ПІДГОНКА ВИСОТИ ВІКНА ДО КОНТЕНТУ ---
     function autoFitPanel() {
-        if (isManuallyResized) return; // Вирішення B1: не змінюємо розмір, якщо його змінив юзер
-
+        if (isManuallyResized) return; // B1: не змінюємо розмір, якщо його змінив юзер
         const panel = document.getElementById('temu-pro-window');
         if (!panel) return;
-        // Замість поступових JavaScript розрахунків дозволяємо вікну миттєво підлаштуватись під зміст
         panel.style.height = 'auto';
         panel.style.minHeight = '150px';
     }
@@ -1064,90 +1137,97 @@
     let _hoverTimer = null;
     let _panelHovered = false;
     let _resetTimer = null;
-    let isManuallyResized = false; // Змінна для відслідковування (ручний розмір зберігає стан)
+    let isManuallyResized = false;
+    let _cardLastLeaveTime = 0; // Час останнього mouseleave з картки (для Bug 7 fix)
 
-    // Важливий функціонал: подвійний клік на панель скидає ручний розмір (повертає авто)
+    // Подвійний клік на панель скидає ручний розмір
     document.addEventListener('dblclick', (e) => {
         const header = e.target.closest('#temu-pro-window');
         if (header) {
             isManuallyResized = false;
             const panel = document.getElementById('temu-pro-window');
-            if (panel) {
-                panel.style.height = 'auto';
-                panel.style.width = '340px';
-                autoFitPanel();
-            }
+            if (panel) { panel.style.height = 'auto'; panel.style.width = '340px'; autoFitPanel(); }
         }
     });
 
-    // Коли курсор на панелі — не змінюємо контент + скасовуємо pending таймери
+    // Коли курсор на панелі — скасовуємо pending таймери
     const _attachPanelHoverListeners = () => {
         const panel = document.getElementById('temu-pro-window');
         if (!panel || panel.hasAttribute('data-hover-attached')) return;
         panel.setAttribute('data-hover-attached', 'true');
-        panel.addEventListener('mouseenter', () => {
-            _panelHovered = true;
-            clearTimeout(_hoverTimer);
-            clearTimeout(_resetTimer);
-        });
-        panel.addEventListener('mouseleave', () => {
-            _panelHovered = false;
-        });
+        panel.addEventListener('mouseenter', () => { _panelHovered = true; clearTimeout(_hoverTimer); clearTimeout(_resetTimer); });
+        panel.addEventListener('mouseleave', () => { _panelHovered = false; });
     };
     requestAnimationFrame(_attachPanelHoverListeners);
 
-    document.addEventListener('mouseover', (e) => {
-        if (!isScriptEnabled || _panelHovered) return;
-        const card = e.target.closest('[data-tooltip-html]');
-
-        if (card) {
+    // Bug 7 FIX: використовуємо mouseenter/mouseleave НА КАРТКАХ замість mouseover на document
+    // Це усуває проблему вертикального hover — кожна картка має власний guard
+    function attachCardHoverEvents(card) {
+        if (card.dataset.tpwHoverAttached) return;
+        card.dataset.tpwHoverAttached = 'true';
+        card.addEventListener('mouseenter', () => {
+            if (!isScriptEnabled || _panelHovered) return;
             if (card === _lastCardEl) return;
-            // Debounce: чекаємо 300ms (F2) щоб переконатися що курсор залишився на картці
+            // Bug 7: ігнорувати якщо курсор повернувся надто швидко (<150ms після виходу)
+            const timeSinceLeave = Date.now() - _cardLastLeaveTime;
+            const debounceMs = timeSinceLeave < 150 ? 350 : 200;
             clearTimeout(_hoverTimer);
             clearTimeout(_resetTimer);
             _hoverTimer = setTimeout(() => {
-                if (_panelHovered) return; // Курсор вже на панелі — не перемикаємо
+                if (_panelHovered || card !== document.querySelector(':hover [data-tooltip-html]') && !card.matches(':hover')) return;
                 _lastCardEl = card;
                 const html = card.getAttribute('data-tooltip-html');
-
-                // F2: Hover highlight - using inset shadow and applying to card itself to fix carousel clipping
+                const cardId = card.getAttribute('data-tpw-id') || '';
                 document.querySelectorAll('.tpw-active-card-highlight').forEach(el => el.classList.remove('tpw-active-card-highlight'));
-                if (card) {
-                    card.classList.add('tpw-active-card-highlight');
-                    _lastHoveredCardId = card.getAttribute('data-tpw-id');
-                }
+                card.classList.add('tpw-active-card-highlight');
+                // Анімація: badge злітає праворуч — ставимо клас на батьківському елементі
+                card.classList.add('tpw-badge-flying');
+                _lastHoveredCardId = cardId;
+                
+                // Bug 6 FIX: панель оновлюється після 250ms — badge вже на півшляху до панелі
+                setTimeout(() => {
+                    if (html && isScriptEnabled) {
+                        sendToIframe({ type: 'TPW_HOVER_INFO', html, cardId });
+                    }
+                    lastHoveredHtml = html;
+                    try { chrome.runtime.sendMessage({ action: 'hoverInfo', html }); } catch (ignore) {}
+                }, 250);
 
-                // infoInject тепер в iframe — використовуємо sendToIframe
-                if (html && isScriptEnabled) {
-                    sendToIframe({type: 'TPW_HOVER_INFO', html: html});
-                }
-                lastHoveredHtml = html;
-                try { chrome.runtime.sendMessage({ action: 'hoverInfo', html: html }); } catch (ignore) { }
+                // Логічне автоперемикання вкладки (Intent to switch)
+                // Якщо користувач продовжує тримати мишу на картці ще 600ms, ми активуємо "Аналітику"
+                card._tpwTabTimer = setTimeout(() => {
+                     if (_lastCardEl === card && !_panelHovered && isScriptEnabled) {
+                         sendToIframe({ type: 'TPW_SWITCH_TAB', tab: 'info' });
+                     }
+                }, 600);
 
-                // Автоматичне перемикання на вкладку Аналітика при наведенні
-                sendToIframe({type: 'TPW_SWITCH_TAB', tab: 'info'});
-            }, 300);
-        } else {
-            // Мишка не на картці — скасовуємо pending hover
+            }, debounceMs);
+        });
+        card.addEventListener('mouseleave', () => {
+            _cardLastLeaveTime = Date.now();
             clearTimeout(_hoverTimer);
-            // Скидаємо контент лише через 500ms (дає час дістатись до панелі)
+            clearTimeout(card._tpwTabTimer);
+            // Badge повертається на місце = знімаємо клас flying
+            card.classList.remove('tpw-badge-flying');
             clearTimeout(_resetTimer);
             _resetTimer = setTimeout(() => {
                 if (_panelHovered) return;
-                // Якщо є lastHoveredHtml — тримаємо підсвітку і контент
                 if (lastHoveredHtml) return;
                 _lastCardEl = null;
                 _lastHoveredCardId = null;
-                const defaultHtml = cachedMainProductHtml || `
-                    <div style="text-align:center; padding: 40px 10px; color: #888; font-size: 12px; line-height: 1.5;">
-                        ${svgIcon('search', '#bbb', 28)}
-                        <div style="margin-top: 8px;">${L.hoverHint}</div>
-                    </div>`;
-                sendToIframe({type: 'TPW_HOVER_INFO', html: defaultHtml});
+                const defaultHtml = cachedMainProductHtml || `<div style="text-align:center;padding:40px 10px;color:#888;font-size:12px;line-height:1.5;">${svgIcon('search','#bbb',28)}<div style="margin-top:8px;">${L.hoverHint}</div></div>`;
+                sendToIframe({ type: 'TPW_HOVER_INFO', html: defaultHtml, cardId: '' });
                 document.querySelectorAll('.tpw-active-card-highlight').forEach(el => el.classList.remove('tpw-active-card-highlight'));
-                try { chrome.runtime.sendMessage({ action: 'hoverInfo', html: defaultHtml }); } catch (ignore) { }
-            }, 500);
-        }
+                try { chrome.runtime.sendMessage({ action: 'hoverInfo', html: defaultHtml }); } catch (ignore) {}
+            }, 600);
+        });
+    }
+
+    // Fallback mouseover для карток, що з'явились ДО attachCardHoverEvents (динамічний DOM)
+    document.addEventListener('mouseover', (e) => {
+        if (!isScriptEnabled || _panelHovered) return;
+        const card = e.target.closest('[data-tooltip-html]');
+        if (card) attachCardHoverEvents(card);
     });
 
     // --- МАТЕМАТИКА ТА ПАРСИНГ ---
@@ -1317,9 +1397,12 @@
 
         // Крок 1: шукаємо "відгук" (НЕ "оцінк%") — це кількість відгуків
         const findReviewEl = (container) => {
-            const leafs = Array.from(container.querySelectorAll('div, span, a, p')).filter(el =>
-                el.children.length === 0 && el.textContent.trim().length > 0 && el.textContent.trim().length < 60
-            );
+            const leafs = Array.from(container.querySelectorAll('div, span, a, p')).filter(el => {
+                let t = el.textContent.toLowerCase();
+                // Жорстке ігнорування цін, щоб 0 відгуків не перетворилось на ціну
+                if (t.includes('$') || t.includes('₴') || t.includes('грн') || t.includes('ррц')) return false;
+                return el.children.length === 0 && el.textContent.trim().length > 0 && el.textContent.trim().length < 60;
+            });
             // Пріоритет 1: елемент що містить "N,NNN reviews" або "N NNN відгуків" (повний текст з числом)
             let found = leafs.find(el => {
                 let t = el.textContent.trim().toLowerCase();
@@ -1434,36 +1517,44 @@
         else if (text.includes('швидка доставка') || text.includes('fast delivery') || text.includes('express')) { bonusPointsFinal += 1.5; bonusLines.push({ name: `${L.fastDel} <span style="color:#95a5a6;font-size:9px;">(${L.fix})</span>`, pts: 1.5, max: 1.5 }); }
         if (text.includes('пропозиція') || text.includes('special offer') || text.includes('lightning deal') || text.includes('deal')) { bonusPointsFinal += 3.5; bonusLines.push({ name: `${L.specOffer} <span style="color:#95a5a6;font-size:9px;">(${L.fix})</span>`, pts: 3.5, max: 3.5 }); }
 
-        // --- ВАГОВА МОДЕЛЬ ---
+        // --- ВАГОВА МОДЕЛЬ (100-POINT ALGORITHM) ---
         let nDisc = isNaN(discountPercent) ? 0 : Math.min(100, Math.max(0, discountPercent));
         let nRat = isNaN(rating) ? 0 : (rating / 5) * 100;
         let nSal = isNaN(sales) ? 0 : Math.min(100, (sales / 5000) * 100);
         let nRev = isNaN(reviews) ? 0 : Math.min(100, (reviews / 1000) * 100);
 
-        let totalWeight = (Number(wDiscount) || 0) + (Number(wRating) || 0) + (Number(wSales) || 0) + (Number(wReviews) || 0);
-        if (totalWeight <= 0 || isNaN(totalWeight)) totalWeight = 1;
+        let _wD = Number(wDiscount) || 0;
+        let _wR = Number(wRating) || 0;
+        let _wS = Number(wSales) || 0;
+        let _wV = Number(wReviews) || 0;
+        let _wB = Number(wBonuses) || 0;
 
-        let ptsDisc100 = (nDisc * wDiscount) / totalWeight;
-        let ptsRat100 = (nRat * wRating) / totalWeight;
-        let ptsSal100 = (nSal * wSales) / totalWeight;
-        let ptsRev100 = (nRev * wReviews) / totalWeight;
+        let totalWeight = _wD + _wR + _wS + _wV + _wB;
+        if (totalWeight <= 0 || isNaN(totalWeight)) {
+            _wD = 20; _wR = 20; _wS = 20; _wV = 20; _wB = 20;
+            totalWeight = 100;
+        }
 
-        let maxPtsDiscInt = Math.round(((wDiscount / totalWeight) * 100) * 0.80);
-        let maxPtsRatInt = Math.round(((wRating / totalWeight) * 100) * 0.80);
-        let maxPtsSalInt = Math.round(((wSales / totalWeight) * 100) * 0.80);
-        let maxPtsRevInt = Math.round(((wReviews / totalWeight) * 100) * 0.80);
+        let maxPtsDiscInt = Math.round((_wD / totalWeight) * 100) || 0;
+        let maxPtsRatInt  = Math.round((_wR / totalWeight) * 100) || 0;
+        let maxPtsSalInt  = Math.round((_wS / totalWeight) * 100) || 0;
+        let maxPtsRevInt  = Math.round((_wV / totalWeight) * 100) || 0;
+        let maxPtsBonusInt = Math.round((_wB / totalWeight) * 100) || 0;
 
-        let ptsDiscInt = Math.round(ptsDisc100 * 0.80) || 0;
-        let ptsRatInt = Math.round(ptsRat100 * 0.80) || 0;
-        let ptsSalInt = Math.round(ptsSal100 * 0.80) || 0;
-        let ptsRevInt = Math.round(ptsRev100 * 0.80) || 0;
+        let ptsDiscInt = Math.round((nDisc * maxPtsDiscInt) / 100) || 0;
+        let ptsRatInt  = Math.round((nRat * maxPtsRatInt) / 100) || 0;
+        let ptsSalInt  = Math.round((nSal * maxPtsSalInt) / 100) || 0;
+        let ptsRevInt  = Math.round((nRev * maxPtsRevInt) / 100) || 0;
 
         let baseScoreInt = ptsDiscInt + ptsRatInt + ptsSalInt + ptsRevInt;
 
-        const MAX_BONUS = 20;
-        let bonusContributionInt = Math.round(Math.min(bonusPointsFinal, MAX_BONUS));
+        const RAW_MAX_BONUS = 20;
+        let bonusFraction = Math.min(1.0, bonusPointsFinal / RAW_MAX_BONUS);
+        let bonusContributionInt = Math.round(bonusFraction * maxPtsBonusInt) || 0;
+
         let finalScore = baseScoreInt + bonusContributionInt;
         finalScore = Math.min(100, Math.max(0, finalScore));
+        const MAX_BONUS = maxPtsBonusInt; // mapped purely for cosmetic display down below
         let color = getColor(finalScore);
 
         let bonusHtml = `<div class="tt-div"></div>`;
@@ -1510,7 +1601,7 @@
             let displaySum = (Math.round(bonusPointsFinal * 10) / 10).toFixed(1);
             bonusHtml += `<div style="margin-top: 8px; padding-top: 6px; border-top: 1px dotted #ccc; font-size: 10.5px; color: #7f8c8d; text-align: right; line-height: 1.5;">
                 ${L.sumBonus}: <b>${displaySum} ${L.pts}.</b>${limitTxt}<br>
-                ${L.roundedFinal}: <b style="color:#27ae60; font-size:12px;">${bonusContributionInt} / 20 ${L.pts}.</b>
+                ${L.roundedFinal}: <b style="color:#27ae60; font-size:12px;">${bonusContributionInt} / ${maxPtsBonusInt} ${L.pts}.</b>
             </div>`;
         } else {
             const emptySvg = `<span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:2px;"><svg width="12" height="12" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4" fill="none" stroke="#ccc" stroke-width="2"/></svg></span>`;
@@ -1526,7 +1617,7 @@
                 <div class="tpw-legend-item inactive"><span>${emptySvg} ${L.fastDel}</span><span>1.5${L.pts}</span></div>
                 <div class="tpw-legend-item inactive"><span>${emptySvg} ${L.specOffer}</span><span>3.5${L.pts}</span></div>
             </div>`;
-            bonusHtml += `<div style="font-size: 11px; color: #999; text-align: center; font-style: italic; cursor: help;">${L.bonusNone} — 0 / 20 ${L.pts}. <span style="font-size:9px;">ⓘ ${L.hover}</span></div>`;
+            bonusHtml += `<div style="font-size: 11px; color: #999; text-align: center; font-style: italic; cursor: help;">${L.bonusNone} — 0 / ${maxPtsBonusInt} ${L.pts}. <span style="font-size:9px;">ⓘ ${L.hover}</span></div>`;
             bonusHtml += `</div>`; // close legend-wrap
         }
 
@@ -1571,12 +1662,12 @@
                 ${priceHtml}
             </div>
             <div class="tt-div"></div>
-            <div class="tt-row"><div class="tt-header"><span>${svgIcon('discount', '#e67e22')}${L.discount}: <b>${Math.floor(discountPercent)}%</b></span> <span class="tt-pts" style="color:#e67e22">${ptsDiscInt} / ${maxPtsDiscInt} ${L.pts}.</span></div>${renderMiniBars(ptsDiscInt, maxPtsDiscInt, '#e67e22')}</div>
-            <div class="tt-row"><div class="tt-header"><span>${svgIcon('star', '#f39c12')}${L.rating}: <b>${rating.toFixed(1)}</b>/5.0</span> <span class="tt-pts" style="color:#f39c12">${ptsRatInt} / ${maxPtsRatInt} ${L.pts}.</span></div>${renderMiniBars(ptsRatInt, maxPtsRatInt, '#f39c12')}</div>
-            <div class="tt-row"><div class="tt-header"><span>${svgIcon('sales', '#e74c3c')}${L.sales}: <b>${sales.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#e74c3c">${ptsSalInt} / ${maxPtsSalInt} ${L.pts}.</span></div>${renderMiniBars(ptsSalInt, maxPtsSalInt, '#e74c3c')}</div>
-            <div class="tt-row"><div class="tt-header"><span>${svgIcon('reviews', '#3498db')}${L.reviews}: <b>${reviews.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#3498db">${ptsRevInt} / ${maxPtsRevInt} ${L.pts}.</span></div>${renderMiniBars(ptsRevInt, maxPtsRevInt, '#3498db')}</div>
-
-            ${bonusHtml}
+            <div class="tt-row"><div class="tt-header"><span>${svgIcon('discount', '#e67e22')}${L.discount}: <b>${Math.floor(discountPercent)}%</b></span> <span class="tt-pts" style="color:#e67e22">${ptsDiscInt} / <span class="tt-max-editable" data-key="wDiscount">${maxPtsDiscInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsDiscInt, maxPtsDiscInt, '#e67e22')}</div>
+            <div class="tt-row"><div class="tt-header"><span>${svgIcon('star', '#f39c12')}${L.rating}: <b>${rating.toFixed(1)}</b>/5.0</span> <span class="tt-pts" style="color:#f39c12">${ptsRatInt} / <span class="tt-max-editable" data-key="wRating">${maxPtsRatInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsRatInt, maxPtsRatInt, '#f39c12')}</div>
+            <div class="tt-row"><div class="tt-header"><span>${svgIcon('sales', '#e74c3c')}${L.sales}: <b>${sales.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#e74c3c">${ptsSalInt} / <span class="tt-max-editable" data-key="wSales">${maxPtsSalInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsSalInt, maxPtsSalInt, '#e74c3c')}</div>
+            <div class="tt-row"><div class="tt-header"><span>${svgIcon('reviews', '#3498db')}${L.reviews}: <b>${reviews.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#3498db">${ptsRevInt} / <span class="tt-max-editable" data-key="wReviews">${maxPtsRevInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsRevInt, maxPtsRevInt, '#3498db')}</div>
+            <div class="tt-row tt-row-bonuses tpw-bonus-legend-wrap"><div class="tt-header" style="cursor:help"><span>${svgIcon('bonus', '#27ae60')}${L.bonuses}: <b>${bonusLines.length > 0 ? bonusLines.map(b=>b.name.split(' ')[0]).join(', ') : '—'}</b></span> <span class="tt-pts" style="color:#27ae60">${bonusContributionInt} / <span class="tt-max-editable" data-key="wBonuses">${maxPtsBonusInt}</span> ${L.pts}.</span></div>${renderMiniBars(bonusContributionInt, maxPtsBonusInt, '#27ae60')}
+            ${bonusHtml}</div>
         `;
     }
 
@@ -1588,19 +1679,32 @@
             let rPt = pEls[0].getAttribute('data-raw-text');
             isNativeUAH = rPt.includes('₴') || rPt.toLowerCase().includes('грн');
         }
-        let isUAH = isNativeUAH;
-        let isUSD = !isNativeUAH;
-
 
         document.querySelectorAll('[data-raw-text]').forEach(el => {
             if (!isSiteCurrencySwapped) {
                 if (el.hasAttribute('data-swapped')) {
-                    el.innerHTML = el.getAttribute('data-raw-html');
+                    // Відновлюємо оригінальний DOM (робимо видимим) без видалення
+                    Array.from(el.childNodes).forEach(child => {
+                        if (child.nodeType === Node.ELEMENT_NODE) {
+                            if (child.classList && child.classList.contains('tpw-swapped-price')) {
+                                child.remove();
+                            } else {
+                                if (child.tpwOriginalDisplay !== undefined) {
+                                    child.style.display = child.tpwOriginalDisplay;
+                                }
+                            }
+                        } else if (child.nodeType === Node.TEXT_NODE) {
+                            if (child.tpwOriginalText !== undefined) {
+                                child.textContent = child.tpwOriginalText;
+                            }
+                        }
+                    });
                     el.removeAttribute('data-swapped');
                 }
                 return;
             }
-            if (el.hasAttribute('data-swapped')) return; // Already swapped
+
+            if (el.hasAttribute('data-swapped')) return; // Вже замінено
 
             const rawText = el.getAttribute('data-raw-text');
             const isUAH = rawText.includes('₴') || rawText.toLowerCase().includes('грн');
@@ -1614,26 +1718,48 @@
                     // UAH → USD
                     convertedVal = val / exchangeRate;
                     let parts = convertedVal.toFixed(2).split('.');
-                    html = `<span style="display:inline-flex; align-items:baseline; font-weight:bold; color:inherit;"><span style="font-size: 0.75em; margin-right: 1px;">$</span><span style="font-size: 1em;">${parts[0]}</span><span style="font-size: 0.75em;">.${parts[1]}</span></span>`;
+                    html = `<span style="font-size: 0.75em; margin-right: 1px;">$</span><span style="font-size: 1em;">${parts[0]}</span><span style="font-size: 0.75em;">.${parts[1]}</span>`;
                 } else {
                     // USD → UAH
                     convertedVal = val * exchangeRate;
                     let parts = convertedVal.toFixed(2).split('.');
                     let intPart = parseInt(parts[0], 10).toLocaleString('uk-UA').replace(/,/g, ' ');
-                    html = `<span style="display:inline-flex; align-items:baseline; font-weight:bold; color:inherit;"><span style="font-size: 1em;">${intPart}</span><span style="font-size: 0.75em;">.${parts[1]}</span><span style="font-size: 0.75em; margin-left: 2px;">₴</span></span>`;
+                    html = `<span style="font-size: 1em;">${intPart}</span><span style="font-size: 0.75em;">.${parts[1]}</span><span style="font-size: 0.75em; margin-left: 2px;">₴</span>`;
                 }
 
-                // Зберігаємо оригінальний HTML для відновлення
+                // Зберігаємо оригінальний HTML для безпеки, хоча ми його більше не перезаписуємо
                 if (!el.hasAttribute('data-raw-html')) {
                     el.setAttribute('data-raw-html', el.innerHTML);
                 }
 
-                // Замінюємо весь вміст на конвертовану ціну зі стилями
-                el.innerHTML = html;
+                // Безпечно ховаємо оригінальні елементи (щоб зберегти їхні Event Listeners)
+                Array.from(el.childNodes).forEach(child => {
+                    if (child.nodeType === Node.ELEMENT_NODE) {
+                        if (child.classList && !child.classList.contains('tpw-swapped-price')) {
+                            if (child.tpwOriginalDisplay === undefined) {
+                                child.tpwOriginalDisplay = child.style.display || '';
+                            }
+                            child.style.display = 'none';
+                        }
+                    } else if (child.nodeType === Node.TEXT_NODE) {
+                        if (child.tpwOriginalText === undefined) {
+                            child.tpwOriginalText = child.textContent;
+                        }
+                        child.textContent = '';
+                    }
+                });
 
-                // T3.1 Converted Currency Indicator
-                const tooltipText = LANG === 'uk' ? 'Сконвертовано\n(оригінальна валюта прихована)' : 'Converted\n(original currency hidden)';
-                el.insertAdjacentHTML('beforeend', `<span class="tpw-currency-swap-icon" title="${tooltipText}" style="display:inline-flex; margin-left:5px; vertical-align:middle; opacity:0.6; cursor:help;">${svgIcon('swap', '#95a5a6', 11)}</span>`);
+                // Видаляємо попередній if exists
+                let existingSwapped = el.querySelector('.tpw-swapped-price');
+                if (existingSwapped) existingSwapped.remove();
+
+                // T3.1 Іконка конвертації валюти
+                const tooltipText = LANG === 'uk' ? 'Сконвертовано\\n(оригінальна валюта прихована)' : 'Converted\\n(original currency hidden)';
+                const iconHtml = `<span class="tpw-currency-swap-icon" title="${tooltipText}" style="display:inline-flex; margin-left:5px; vertical-align:middle; opacity:0.6; cursor:help;">${svgIcon('swap', '#95a5a6', 11)}</span>`;
+
+                // Додаємо свій елемент, який успадкує базові стилі flex батька
+                let wrapperHtml = `<span class="tpw-swapped-price" style="display:inline-flex; align-items:baseline; font-weight:bold; color:inherit;">${html}${iconHtml}</span>`;
+                el.insertAdjacentHTML('beforeend', wrapperHtml);
 
                 el.setAttribute('data-swapped', 'true');
             }
@@ -1694,9 +1820,14 @@
             const hasPriceText = /\$\d+[\.,]\d{2}/.test(t) || /\d+[\.,]\d{2}\s*₴/.test(t) || /₴\s*\d+[\.,]\d{2}/.test(t) || /\d+[\.,]\d{2}\s*грн/.test(t);
             if (!hasPriceText) return;
 
-            // 3. Layout перевірка ТІЛЬКИ для тих елементів (їх буде кілька штук), які пройшли всі фільтри вище
+            // 3. Layout перевірка ТІЛЬКИ для тих елементів
+            // Фільтруємо кошик і бічні панелі однозначно
+            if (div.closest('.cart-list, .Sidebar-itemList, [data-module="cart"], aside, .right-wrapper, .right-panel, .checkout-layout, .OrderSummary, .cart-wrapper, #right-column')) return;
+
             const rect = div.getBoundingClientRect();
-            if (rect.width < 100 || rect.width > 400 || rect.height < 150 || rect.height > 800) return;
+            // Side cart item width is usually ~140px. Normal cards are 160px+
+            if (rect.width < 140 || rect.width > 400 || rect.height < 140 || rect.height > 800) return;
+
 
             products.push(div);
         });
@@ -1813,23 +1944,29 @@
                 // Автоматичне підлаштування лімітів повзунка ціни під валюту сторінки
                 if (!pageCurrencyDetected && price > 0) {
                     pageCurrencyDetected = true;
+                    const detectedNative = isUSD ? 'USD' : 'UAH';
+                    
                     // Для гривні ліміт $100 по курсу (заокруглено до 100)
                     let maxUahEquivalent = Math.round((100 * exchangeRate) / 100) * 100; // e.g., 4100
                     let maxLimit = isUAH ? maxUahEquivalent : (isUSD ? 100 : maxUahEquivalent);
                     let stepLimit = isUAH ? 10 : (isUSD ? 1 : 10);
 
-                    if (currentCurrencyMax !== maxLimit || currentCurrencyStep !== stepLimit) {
-                        chrome.storage.local.get(['fMaxPrice'], (res) => {
-                            let currMax = res.fMaxPrice;
-                            let updates = { currentCurrencyMax: maxLimit, currentCurrencyStep: stepLimit };
+                    // Оновлюємо в background/sidepanel ліміти або детектед валюту
+                    chrome.storage.local.get(['fMaxPrice', 'currentCurrencyMax', 'currentCurrencyStep'], (res) => {
+                        let updates = { pageNativeCurrency: detectedNative };
+                        let currMax = res.fMaxPrice;
+                        
+                        if (res.currentCurrencyMax !== maxLimit || res.currentCurrencyStep !== stepLimit) {
+                            updates.currentCurrencyMax = maxLimit;
+                            updates.currentCurrencyStep = stepLimit;
 
                             // Якщо поточний максимум дорівнює старому ліміту іншої валюти - оновлюємо і сам фільтр
-                            if ([10000, 5000, 1000, 100, currentCurrencyMax].includes(currMax) || !currMax) {
+                            if ([10000, 5000, 1000, 100, res.currentCurrencyMax].includes(currMax) || !currMax) {
                                 updates.fMaxPrice = maxLimit;
                             }
-                            chrome.storage.local.set(updates);
-                        });
-                    }
+                        }
+                        chrome.storage.local.set(updates);
+                    });
                 }
 
                 const formatPrice = (val) => isUAH ? Math.round(val).toLocaleString('uk-UA') : val.toFixed(2);
@@ -2003,8 +2140,19 @@
                     filterPrice = isUSD ? (price * exchangeRate) : price;
                 }
 
+                // Визначення наявності конкретних бонусів для фільтрів
+                const hasExtraDiscount = extraSave > 0 && rrp > 0;
+                const hasTopRating = allText.includes('найвищий рейтинг') || allText.includes('highest rated') || allText.includes('top rated');
+                const hasStarSeller = allText.includes('зірковий продавець') || allText.includes('star seller');
+                const hasImported = allText.includes('імпортован') || allText.includes('imported') || allText.includes('ввезен');
+
                 if (filtersEnabled) {
-                    if (finalScore < fMinScore || discountPercent < fMinDiscount ||
+                    const bonusFilterFail = (fBonusExtraDiscount && !hasExtraDiscount) ||
+                        (fBonusTopRating && !hasTopRating) ||
+                        (fBonusStarSeller && !hasStarSeller) ||
+                        (fBonusImported && !hasImported);
+
+                    if (bonusFilterFail || finalScore < fMinScore || discountPercent < fMinDiscount ||
                         rating < fMinRating || reviews < fMinReviews || sales < fMinSales ||
                         filterPrice < fMinPrice || filterPrice > fMaxPrice) {
 
@@ -2056,20 +2204,27 @@
                 const siblingWithBar = parent.querySelector(':scope > .tpw-score-container');
                 if (siblingWithBar && product !== parent) return; // parent уже отримав бар для іншої картки
 
+                // Д: Захист від вставки badge на нетоварні елементи (кошик, sidebar, checkout)
+                if (product.closest('#temu-pro-window, .cart-wrapper, .Checkout-wrapper, .OrderItem-wrapper, .MiniCart-wrapper')) return;
+
                 let bar = product.querySelector(':scope > .tpw-score-container');
                 if (!bar) { bar = document.createElement('div'); bar.className = 'tpw-score-container'; product.prepend(bar); }
-                // Забезпечуємо position:relative для коректного absolute-позиціонування бару
                 if (getComputedStyle(product).position === 'static') product.style.position = 'relative';
 
-                let pillsHtml = '';
-                for (let i = 1; i <= 10; i++) {
-                    let threshold = i * 10, fillWidth = 0;
-                    if (finalScore >= threshold) fillWidth = 100;
-                    else if (finalScore > threshold - 10) fillWidth = Math.max(0, (finalScore % 10) * 10);
-                    pillsHtml += `<div class="tpw-pill"><div class="tpw-pill-fill" style="width: ${isNaN(fillWidth) ? 0 : fillWidth}%; background: ${color};"></div></div>`;
-                }
+                // E: Donut glassmorphism badge — 44px, число жовтого кольору кільця
                 let displayScore = isNaN(finalScore) ? 0 : finalScore;
-                bar.innerHTML = `<div class="tpw-pills-wrapper">${pillsHtml}</div><div class="tpw-score-number" style="color: ${color}">${displayScore}</div>`;
+                const r = 16, circ = 2 * Math.PI * r;
+                const dashOffset = circ - (displayScore / 100) * circ;
+                const fontSize = displayScore >= 100 ? 9 : 11;
+                bar.innerHTML = `<svg class="tpw-donut-badge" width="44" height="44" viewBox="0 0 44 44">
+                    <circle cx="22" cy="22" r="${r}" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="3"/>
+                    <circle cx="22" cy="22" r="${r}" fill="none" stroke="${color}" stroke-width="3.5"
+                        stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${dashOffset.toFixed(1)}"
+                        stroke-linecap="round" transform="rotate(-90 22 22)"/>
+                    <text x="22" y="26" text-anchor="middle" font-size="${fontSize}" font-weight="800"
+                        fill="${color}" stroke="rgba(255,255,255,0.9)" stroke-width="3" paint-order="stroke"
+                        font-family="Inter,-apple-system,sans-serif">${displayScore}</text>
+                </svg>`;
 
                 // Додаємо обробник кліку для розгортання панелі (як просив користувач - "панель має появлятися при натисканні на барі")
                 bar.style.pointerEvents = 'auto'; // Відновлюємо події миші для бару, хоча він був pointer-events: none раніше
@@ -2177,6 +2332,7 @@
             wRating = req.weights.wRating;
             wSales = req.weights.wSales;
             wReviews = req.weights.wReviews;
+            wBonuses = req.weights.wBonuses;
             processCards(true); // force recalculate
         }
     });
@@ -2208,6 +2364,7 @@
         updateVar('wRating', v => wRating = v);
         updateVar('wSales', v => wSales = v);
         updateVar('wReviews', v => wReviews = v);
+        updateVar('wBonuses', v => wBonuses = v);
         updateVar('isSiteCurrencySwapped', v => isSiteCurrencySwapped = v);
 
         // Якщо виключили скрипт - прибираємо тултіпи
@@ -2230,15 +2387,20 @@
 
         const f2Style = document.createElement('style');
         f2Style.innerHTML = `
+            /* Рамка активної картки: inset box-shadow на after-псевдоелементі, щоб бути ПОВЕРХ будь-якого контенту і не обрізатись overflow:hidden */
             .tpw-active-card-highlight {
-                outline: 2px solid #ff9500 !important;
-                outline-offset: -2px !important;
+                position: relative;
+                z-index: 100 !important;
             }
-            .tpw-active-card-highlight .tpw-score-container {
-                top: 2px !important;
-                left: 2px !important;
-                width: calc(100% - 4px) !important;
-                border-radius: 0 0 6px 6px !important;
+            .tpw-active-card-highlight::after {
+                content: "" !important;
+                position: absolute !important;
+                top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+                border: 2px solid #ff9500 !important;
+                box-sizing: border-box !important;
+                pointer-events: none !important;
+                z-index: 99999 !important;
+                border-radius: 8px !important;
             }
         `;
         document.head.appendChild(f2Style);
