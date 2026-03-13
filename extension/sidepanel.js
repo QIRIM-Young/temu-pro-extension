@@ -131,13 +131,45 @@ document.addEventListener('DOMContentLoaded', () => {
     // Слухаємо повідомлення з content.js та background.js
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action === 'hoverInfo' && request.html) {
+            // Ігноруємо повідомлення від неактивних вкладок — це запобігає мерехтінню
+            // коли кілька вкладок Temu відкриті одночасно
+            if (sender.tab && !sender.tab.active) return;
             const infoInject = document.getElementById('tpw-info-inject');
-            if (infoInject) infoInject.innerHTML = request.html;
-
-            // Автоматичне перемикання на вкладку Аналітика
-            const infoTabBtn = document.querySelector('.tpw-tab[data-tab="info"]');
-            if (infoTabBtn && !infoTabBtn.classList.contains('active')) {
-                infoTabBtn.click();
+            if (infoInject) {
+                infoInject.innerHTML = request.html;
+                infoInject.classList.remove('tpw-info-inject-empty');
+                // Прикріплюємо обробник редагування до .tt-max-editable (як в isIframeMode)
+                infoInject.querySelectorAll('.tt-max-editable').forEach(span => {
+                    if (span.dataset.editAttached) return;
+                    span.dataset.editAttached = 'true';
+                    span.title = 'Клікніть для зміни ваги';
+                    span.style.cssText = 'cursor:pointer;border-bottom:1px dashed #ccc;padding:0 1px;';
+                    span.addEventListener('click', function(ev) {
+                        ev.stopPropagation();
+                        const key = this.dataset.key;
+                        const cur = parseInt(this.textContent) || 20;
+                        const inp = document.createElement('input');
+                        inp.type = 'number'; inp.value = cur; inp.min = 1; inp.max = 80;
+                        inp.style.cssText = 'width:32px;border:1px solid #34c759;border-radius:3px;font-size:11px;font-weight:700;text-align:center;outline:none;padding:0;background:#fff;';
+                        this.replaceWith(inp); inp.focus(); inp.select();
+                        const save = () => {
+                            let val = Math.max(1, Math.min(80, parseInt(inp.value) || cur));
+                            const newSpan = document.createElement('span');
+                            newSpan.className = 'tt-max-editable'; newSpan.dataset.key = key;
+                            newSpan.textContent = val; inp.replaceWith(newSpan);
+                            chrome.storage.local.set({ [key]: val });
+                        };
+                        inp.addEventListener('blur', save);
+                        inp.addEventListener('keydown', e => { if (e.key==='Enter') inp.blur(); if (e.key==='Escape') { inp.value=cur; inp.blur(); } });
+                    });
+                });
+            }
+            // Removed automatic tab switching here to prevent constant jumping
+        }
+        if (request.action === 'switchTab') {
+            const tabBtn = document.querySelector(`.tpw-tab[data-tab="${request.tab}"]`);
+            if (tabBtn && !tabBtn.classList.contains('active')) {
+                tabBtn.click();
             }
         }
         // Відповідаємо на ping від content.js — підтверджуємо що Side Panel живий
@@ -163,12 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     window._lastHoverCardId = incomingCardId;
                     
                     if (isNewProduct) {
-                        // Removed auto-tab switching: the user should be able to stay on the Filters or Settings tab
-                        // even when hovering over new products, to prevent the UI from jumping unexpectedly.
-                        // const infoTabBtn = document.querySelector('.tpw-tab[data-tab="info"]');
-                        // if (infoTabBtn && !infoTabBtn.classList.contains('active')) {
-                        //     infoTabBtn.click();
-                        // }
+                        // Відновлено авто-світч на вкладку "Аналітика" за проханням юзера
+                        const infoTabBtn = document.querySelector('.tpw-tab[data-tab="info"]');
+                        if (infoTabBtn && !infoTabBtn.classList.contains('active')) {
+                            infoTabBtn.click();
+                        }
                     }
                     // Pencil-edit delegation: на нові елементи .tt-max-editable додаємо редагування
                     infoInject.querySelectorAll('.tt-max-editable').forEach(span => {
@@ -230,7 +261,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newState = !isCollapsed;
                 if (tabsEl) tabsEl.classList.toggle('collapsed', newState);
                 if (bodyEl) bodyEl.classList.toggle('collapsed', newState);
-                btnCollapse.textContent = newState ? '+' : '—';
+                
+                if (newState) {
+                    btnCollapse.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
+                    btnCollapse.title = "Розгорнути";
+                } else {
+                    btnCollapse.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="tpw-icon-collapse" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
+                    btnCollapse.title = "Згорнути";
+                }
+
                 window.parent.postMessage({
                     type: 'TPW_COLLAPSE_TOGGLE',
                     collapsed: newState
@@ -657,61 +696,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSegmentedBarUI();
             syncEditableDisplays();
 
-            // --- IFRAME HOVER IPC: отримуємо hover HTML через chrome.storage ---
-            if (changes._iframeHoverHtml || changes._iframeHoverTs) {
-                chrome.storage.local.get(['_iframeHoverHtml', '_iframeHoverCardId'], (res) => {
-                    const html = res._iframeHoverHtml;
-                    const cardId = res._iframeHoverCardId || '';
-                    if (html) {
-                        const infoInject = document.getElementById('tpw-info-inject');
-                        if (infoInject) {
-                            infoInject.innerHTML = html;
-                            infoInject.classList.remove('tpw-info-inject-empty');
-                            // Pencil-edit delegation для елементів з storage
-                            infoInject.querySelectorAll('.tt-max-editable').forEach(span => {
-                                if (span.dataset.editAttached) return;
-                                span.dataset.editAttached = 'true';
-                                span.title = 'Клікніть для зміни ваги';
-                                span.style.cssText = 'cursor:pointer;border-bottom:1px dashed #ccc;padding:0 1px;';
-                                span.addEventListener('click', function(ev) {
-                                    ev.stopPropagation();
-                                    const key = this.dataset.key;
-                                    const cur = parseInt(this.textContent) || 20;
-                                    const inp = document.createElement('input');
-                                    inp.type = 'number'; inp.value = cur; inp.min = 1; inp.max = 80;
-                                    inp.style.cssText = 'width:32px;border:1px solid #34c759;border-radius:3px;font-size:11px;font-weight:700;text-align:center;outline:none;padding:0;background:#fff;';
-                                    this.replaceWith(inp); inp.focus(); inp.select();
-                                    const save = () => {
-                                        let val = Math.max(1, Math.min(80, parseInt(inp.value) || cur));
-                                        const newSpan = document.createElement('span');
-                                        newSpan.className = 'tt-max-editable'; newSpan.dataset.key = key;
-                                        newSpan.textContent = val; inp.replaceWith(newSpan);
-                                        chrome.storage.local.set({ [key]: val });
-                                    };
-                                    inp.addEventListener('blur', save);
-                                    inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){inp.value=cur;inp.blur();} });
-                                });
-                            });
-                        }
-                        // Bug 6 FIX (storage path): авто-перемикання ТІЛЬКИ якщо новий продукт
-                        const isNewProduct = cardId !== '' && cardId !== window._lastHoverCardId;
-                        window._lastHoverCardId = cardId;
-                        if (isNewProduct) {
-                            // Automatically switching to info on hover is disabled to respect user workflow
-                            // const infoTabBtn = document.querySelector('.tpw-tab[data-tab="info"]');
-                            // if (infoTabBtn && !infoTabBtn.classList.contains('active')) {
-                            //     infoTabBtn.click();
-                            // }
-                        }
-                    }
-                });
-            }
-            if (changes._iframeActiveTab) {
-                const tabBtn = document.querySelector(`.tpw-tab[data-tab="${changes._iframeActiveTab.newValue}"]`);
-                if (tabBtn && !tabBtn.classList.contains('active')) {
-                    tabBtn.click();
-                }
-            }
+            // В iframe-режимі hover-дані надходять через window.postMessage напряму від
+            // content.js тієї ж вкладки (рядки 155-200). Storage-шлях ВИМКНЕНО,
+            // бо він розповсюджує дані між усіма вкладками → мерехтіння.
+            // Не-iframe sidepanel використовує chrome.runtime.onMessage (рядок 132)
+            // який вже має перевірку sender.tab.active.
+
         }
     });
 

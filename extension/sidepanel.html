@@ -34,10 +34,12 @@
         #seg-rat { background: #f1c40f; }
         #seg-sal { background: #e74c3c; }
         #seg-rev { background: #3498db; }
+        #seg-bonuses { background: #27ae60; }
         .st-label-disc { color: #9b59b6; }
         .st-label-rat { color: #f1c40f; }
         .st-label-sal { color: #e74c3c; }
         .st-label-rev { color: #3498db; }
+        .st-label-bonuses { color: #27ae60; }
         .dual-slider-inputs-col { display: flex; flex-direction: column; gap: 4px; width: 50px; align-items: flex-end; }
         .dual-slider-inputs-col .st-num-input { width: 100%; height: 18px; font-size: 10px; }
         .dual-slider-inputs-col .st-num-editable { width: 100%; height: 18px; font-size: 10px; }
@@ -184,12 +186,26 @@
             align-items: center;
             margin-bottom: 3px;
             font-size: 12px;
+            flex-wrap: nowrap;
+            gap: 4px;
+        }
+
+        .tt-header > span:first-child {
+            flex: 1 1 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .tt-pts {
             color: #d35400;
             font-weight: 600;
             font-size: 11px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            min-width: 52px;
+            text-align: right;
         }
 
         .tt-bars {
@@ -238,6 +254,17 @@
             font-weight: 600;
             margin-bottom: 2px;
         }
+
+        .tpw-legend-item { display: flex; justify-content: space-between; margin-bottom: 4px; color: #555; }
+        .tpw-legend-item.inactive { opacity: 0.5; }
+        .tpw-legend-item span:last-child { font-weight: 600; color: #333; }
+        .tt-row-bonuses { margin-top: 4px; padding-top: 4px; border-top: 1px dashed #ccc; }
+        .tt-row-bonuses .tt-header { margin-bottom: 0; }
+        .tt-row-bonuses:not(.tpw-bonus-legend-wrap) .tt-header { cursor: default; }
+        .tpw-bonus-legend-wrap { position: relative; }
+        .tpw-bonus-legend { display: none; margin-top: 4px; padding-top: 6px; border-top: 1px dotted #ccc; font-size: 11px; }
+        .tpw-bonus-legend-wrap:hover .tpw-bonus-legend { display: block; }
+
 
         /* CSS Toggle Pill */
         .st-toggle-wrap {
@@ -701,11 +728,16 @@
         }
 
         #tpw-info-inject {
-            text-align: center;
+            text-align: left;
             padding: 15px 10px;
             color: #888;
             font-size: 12px;
             line-height: 1.4;
+        }
+
+        /* Порожній стан — іконка за центром */
+        #tpw-info-inject.tpw-info-inject-empty {
+            text-align: center;
         }
 
         #tpw-info-inject svg {
@@ -713,8 +745,17 @@
             display: inline-block;
         }
 
-        #tpw-info-inject span {
+        /* Порожній стан — спан тексту-підказки по центру */
+        #tpw-info-inject.tpw-info-inject-empty span {
             display: block;
+        }
+
+        /* Закреслена стара ціна в аналітиці */
+        .tpw-rrp {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 12px;
+            display: inline !important;
         }
 
         .tpw-accordion-header-text {
@@ -905,7 +946,9 @@
             <button id="btn-sidepanel" class="tpw-iframe-btn" title="Бічна панель">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0097e6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
             </button>
-            <button id="btn-collapse" class="tpw-iframe-btn" title="Згорнути">—</button>
+            <button id="btn-collapse" class="tpw-iframe-btn" title="Згорнути">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="tpw-icon-collapse" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
             <button id="btn-reload-sp" title="Оновити панель">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b95a5" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">

@@ -14,3 +14,7 @@ tests/test_output.txt
 .vs/
 .vscode/
 *.log
+extension.crx
+extension.pem
+task.md
+tests/temp-*.ps1
