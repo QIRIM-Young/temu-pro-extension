@@ -2607,19 +2607,18 @@ function syncSettingsWithUI() {
 
         const f2Style = document.createElement('style');
         f2Style.innerHTML = `
-            /* B3: Рамка активної картки */
+            /* B3: Рамка активної картки — 4px однаково для сітки і каруселі */
             .tpw-active-card-highlight {
                 position: relative;
-                z-index: 100 !important;
+                z-index: 10000 !important;
                 outline: 2px solid #ff9500 !important;
-                outline-offset: 6px !important;
-                border-radius: 10px !important;
+                outline-offset: 4px !important;
+                border-radius: 8px !important;
             }
-            /* B3: карусель має менший відступ щоб не заходити за бар */
+            /* B3: карусель — z-index вищий за Top Picks бар */
             .splide__slide .tpw-active-card-highlight,
             .splide__slide.tpw-active-card-highlight {
-                outline-offset: 3px !important;
-                border-radius: 8px !important;
+                z-index: 20000 !important;
             }
             /* B12: Олівець в толтипі аналітики — hover-only */
             .tt-max-editable .tt-pencil-icon {
@@ -2649,6 +2648,8 @@ function syncSettingsWithUI() {
                 if (!panel) return;
                 const pencilSvg = '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
                 panel.querySelectorAll('.st-num-input').forEach(input => {
+                    // fn-qty — виключаємо: воно має власну qty-presets-row обгортку
+                    if (input.id === 'fn-qty') return;
                     if (input.parentElement.classList.contains('st-num-editable')) return;
 
                     const wrapper = document.createElement('div');
@@ -2695,32 +2696,27 @@ function syncSettingsWithUI() {
                 });
             })();
 
-            // BUILD_TIME визначено як константу, fetch не потрібен (MV3 CSP обмеження)
+            // Показуємо плаваюче вікно одразу
+            const mainPanel = document.getElementById('temu-pro-window');
+            if (mainPanel) mainPanel.style.display = isSidePanelOpen ? 'none' : 'flex';
 
             // Перевіряємо чи Side Panel вже відкритий (взаємовиключність)
             try {
                 chrome.runtime.sendMessage({ action: 'pingSidePanel' }, (response) => {
                     if (chrome.runtime.lastError) {
-                        // Side Panel не відкритий
+                        // Side Panel не відкритий — показуємо floating
                         isSidePanelOpen = false;
                         chrome.storage.local.set({ isSidePanelOpen: false, preferredWindowMode: 'floating' });
-                        const panel = document.getElementById('temu-pro-window');
-                        if (panel) panel.style.display = 'flex';
+                        const p = document.getElementById('temu-pro-window');
+                        if (p) p.style.display = 'flex';
                         return;
                     }
                     if (response && response.alive) {
-                        // Side Panel відкритий — запам'ятовуємо, але поважаємо преференцію
-                        if (isSidePanelOpen) {
-                            // Преференц sidepanel — ховаємо floating
-                            const panel = document.getElementById('temu-pro-window');
-                            if (panel) panel.style.display = 'none';
-                        } else {
-                            // Преференц floating — Side Panel від криться, floating залишаємо
-                            isSidePanelOpen = true;
-                            chrome.storage.local.set({ isSidePanelOpen: true });
-                            const panel = document.getElementById('temu-pro-window');
-                            if (panel) panel.style.display = 'none';
-                        }
+                        // Side Panel відкритий — ховаємо floating
+                        isSidePanelOpen = true;
+                        chrome.storage.local.set({ isSidePanelOpen: true, preferredWindowMode: 'sidepanel' });
+                        const p = document.getElementById('temu-pro-window');
+                        if (p) p.style.display = 'none';
                     }
                 });
             } catch (ignore) {
