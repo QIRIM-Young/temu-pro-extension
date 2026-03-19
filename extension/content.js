@@ -977,6 +977,8 @@ function syncSettingsWithUI() {
         panel.id = 'temu-pro-window';
         if (isPanelCollapsed) panel.classList.add('is-collapsed-mode');
 
+        panel.style.position = 'fixed'; // Критично! CSS style Temu видаляє, inline — ні
+        panel.style.zIndex = '9999999';
         panel.style.top = '20px';
         panel.style.right = '20px';
         panel.style.display = 'flex'; // Side Panel приховає через onChanged listener
