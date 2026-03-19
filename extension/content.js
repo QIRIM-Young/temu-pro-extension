@@ -977,11 +977,30 @@ function syncSettingsWithUI() {
         panel.id = 'temu-pro-window';
         if (isPanelCollapsed) panel.classList.add('is-collapsed-mode');
 
-        panel.style.position = 'fixed'; // Критично! CSS style Temu видаляє, inline — ні
-        panel.style.zIndex = '9999999';
-        panel.style.top = '20px';
-        panel.style.right = '20px';
-        panel.style.display = 'flex'; // Side Panel приховає через onChanged listener
+        // Критично: всі візуальні стилі як INLINE — Temu React видаляє injected CSS!
+        Object.assign(panel.style, {
+            position:        'fixed',
+            zIndex:          '9999999',
+            top:             '20px',
+            right:           '20px',
+            display:         'flex',          // Side Panel приховає через onChanged listener
+            flexDirection:   'column',
+            width:           '340px',
+            minWidth:        '240px',
+            maxWidth:        '500px',
+            maxHeight:       '90vh',
+            background:      'rgba(255, 255, 255, 0.65)',
+            webkitBackdropFilter: 'blur(24px) saturate(1.5)',
+            backdropFilter:  'blur(24px) saturate(1.5)',
+            border:          '1px solid rgba(255, 255, 255, 0.6)',
+            borderRadius:    '16px',
+            boxShadow:       '0 10px 40px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.4)',
+            color:           '#222',
+            fontFamily:      "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            overflow:        'hidden',
+            containerType:   'inline-size',
+            containerName:   'tpw-panel',
+        });
 
         const iframeUrl = chrome.runtime.getURL('sidepanel.html') + '?mode=iframe';
 
