@@ -2608,12 +2608,12 @@ function syncSettingsWithUI() {
 
         const f2Style = document.createElement('style');
         f2Style.innerHTML = `
-            /* B3: Рамка активної картки — 4px однаково для сітки і каруселі */
+            /* B3: Рамка активної картки — box-shadow (не обрізається overflow:hidden батька) */
             .tpw-active-card-highlight {
                 position: relative;
                 z-index: 10000 !important;
-                outline: 2px solid #ff9500 !important;
-                outline-offset: 4px !important;
+                /* box-shadow замість outline — не обрізається overflow:hidden батьківського контейнера */
+                box-shadow: 0 0 0 3px #ff9500 !important;
                 border-radius: 8px !important;
             }
             /* B3: карусель — z-index вищий за Top Picks бар */
@@ -2621,14 +2621,8 @@ function syncSettingsWithUI() {
             .splide__slide.tpw-active-card-highlight {
                 z-index: 20000 !important;
             }
-            /* B3: overflow:visible щоб outline не обрізався */
+            /* B3: overflow:visible щоб box-shadow теж не обрізався */
             .tpw-active-card-highlight {
-                overflow: visible !important;
-            }
-            /* Батьківські контейнери Temu мають overflow:hidden — знімаємо */
-            ._3qGJLBpe:has(.tpw-active-card-highlight),
-            .EKDT7a3v:has(.tpw-active-card-highlight),
-            .splide__slide:has(.tpw-active-card-highlight) {
                 overflow: visible !important;
             }
             /* B12: Олівець в толтипі аналітики — hover-only */
@@ -2711,23 +2705,20 @@ function syncSettingsWithUI() {
             const mainPanel = document.getElementById('temu-pro-window');
             if (mainPanel) mainPanel.style.display = isSidePanelOpen ? 'none' : 'flex';
 
-            // Перевіряємо чи Side Panel вже відкритий (взаємовиключність)
+            // Перевіряємо чи Side Panel вже відкритий
+            // НЕ ховаємо floating window автоматично — користувач сам обирає через □
             try {
                 chrome.runtime.sendMessage({ action: 'pingSidePanel' }, (response) => {
                     if (chrome.runtime.lastError) {
-                        // Side Panel не відкритий — показуємо floating
                         isSidePanelOpen = false;
-                        chrome.storage.local.set({ isSidePanelOpen: false, preferredWindowMode: 'floating' });
-                        const p = document.getElementById('temu-pro-window');
-                        if (p) p.style.display = 'flex';
+                        chrome.storage.local.set({ isSidePanelOpen: false });
                         return;
                     }
                     if (response && response.alive) {
-                        // Side Panel відкритий — ховаємо floating
+                        // Side Panel відкритий — лише записуємо стан, НЕ ховаємо автоматично
                         isSidePanelOpen = true;
-                        chrome.storage.local.set({ isSidePanelOpen: true, preferredWindowMode: 'sidepanel' });
-                        const p = document.getElementById('temu-pro-window');
-                        if (p) p.style.display = 'none';
+                        chrome.storage.local.set({ isSidePanelOpen: true });
+                        // Вікно показуємо завжди при старті — юзер може сам перейти в side panel режим
                     }
                 });
             } catch (ignore) {
