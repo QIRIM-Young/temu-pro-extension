@@ -818,6 +818,8 @@ document.addEventListener('DOMContentLoaded', () => {
     (function wrapNumInputsWithPencil() {
         const pencilSvg = '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
         document.querySelectorAll('.st-num-input').forEach(input => {
+            // fn-qty — виключаємо: має власну qty-presets-row обгортку
+            if (input.id === 'fn-qty') return;
             if (input.parentElement.classList.contains('st-num-editable')) return;
 
             const wrapper = document.createElement('div');

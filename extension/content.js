@@ -187,9 +187,10 @@
             wBonuses = validNum(res.wBonuses, 20);
 
             exchangeRate = validNum(res.exchangeRate, 41.0);
-            // Відновлюємо попередній стан вікна зі storage (floating vs sidepanel)
-            // isSidePanelOpen встановлюється пізніше через pingSidePanel
-            isSidePanelOpen = (res.preferredWindowMode === 'sidepanel');
+            // Зберігаємо преференцію режиму для UX, але isSidePanelOpen завжди false при старті
+            // (side panel не persists між завантаженнями сторінки)
+            // pingSidePanel визначить реальний стан після boot
+            isSidePanelOpen = false;
 
             if (callback) callback();
         });
@@ -2619,6 +2620,16 @@ function syncSettingsWithUI() {
             .splide__slide .tpw-active-card-highlight,
             .splide__slide.tpw-active-card-highlight {
                 z-index: 20000 !important;
+            }
+            /* B3: overflow:visible щоб outline не обрізався */
+            .tpw-active-card-highlight {
+                overflow: visible !important;
+            }
+            /* Батьківські контейнери Temu мають overflow:hidden — знімаємо */
+            ._3qGJLBpe:has(.tpw-active-card-highlight),
+            .EKDT7a3v:has(.tpw-active-card-highlight),
+            .splide__slide:has(.tpw-active-card-highlight) {
+                overflow: visible !important;
             }
             /* B12: Олівець в толтипі аналітики — hover-only */
             .tt-max-editable .tt-pencil-icon {
