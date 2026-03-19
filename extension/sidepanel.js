@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- ВЕРСІЯ ТА ДАТА БІЛДУ (оновлювати тут, не в HTML) ---
-    const SP_VERSION = '15.4';
-    const SP_BUILD   = '08.03.2026 04:14';
+    const SP_VERSION = '16.0';
+    const SP_BUILD   = '14.03.2026';
     const buildStamp = document.getElementById('tpw-build-time');
     if (buildStamp) buildStamp.textContent = `v${SP_VERSION} • ${SP_BUILD}`;
 
@@ -45,6 +45,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let currentWeights = [20, 20, 20, 20, 20];
+    let isEditingMaxScore = false; // B12 flag
+
+    // B10 logic: Proportional weight scaling
+    function applyProportionalWeightChange(key, newVal) {
+        const keysMap = { 'wDiscount': 0, 'wRating': 1, 'wSales': 2, 'wReviews': 3, 'wBonuses': 4 };
+        const changedIdx = keysMap[key];
+        if (changedIdx === undefined) return;
+        
+        let curVal = currentWeights[changedIdx];
+        let delta = newVal - curVal;
+        if (delta === 0) return;
+
+        let othersSum = 0;
+        for (let i = 0; i < 5; i++) {
+            if (i !== changedIdx) othersSum += currentWeights[i];
+        }
+
+        let newWeightsData = { [key]: newVal };
+        let tempWeights = [...currentWeights];
+        tempWeights[changedIdx] = newVal;
+        
+        if (othersSum > 0) {
+            let remainDelta = -delta;
+            for (let i = 0; i < 5; i++) {
+                if (i !== changedIdx) {
+                    let share = othersSum > 0 ? Math.round((-delta) * (currentWeights[i] / othersSum)) : 0;
+                    tempWeights[i] = Math.max(0, currentWeights[i] + share);
+                    remainDelta -= share;
+                }
+            }
+            // Add any left over remainder due to rounding to the largest element
+            let error = 100 - tempWeights.reduce((a, b) => a + b, 0);
+            if (error !== 0) {
+                let maxIdx = -1, maxVal = -1;
+                for (let i=0; i<5; i++) {
+                    if (i !== changedIdx && tempWeights[i] > maxVal) {
+                        maxVal = tempWeights[i]; maxIdx = i;
+                    }
+                }
+                if (maxIdx !== -1) tempWeights[maxIdx] += error;
+            }
+            
+            const revKeys = ['wDiscount', 'wRating', 'wSales', 'wReviews', 'wBonuses'];
+            for (let i = 0; i < 5; i++) {
+                if (i !== changedIdx) newWeightsData[revKeys[i]] = tempWeights[i];
+            }
+        }
+        chrome.storage.local.set(newWeightsData);
+    }
 
     // Кнопки скидання
     const btnResetAlg = document.getElementById('btn-reset-alg');
@@ -64,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             const pMaxVal = parseFloat(document.getElementById('fs-pmax')?.max) || 10000;
             const defaults = {
-                fMinScore: 0, fMinDiscount: 0, fMinRating: 0, fMinSales: 0, fMinReviews: 0,
+                fMinScore: 0, fMinDiscount: 0, fMinRating: 0, fMinSales: 0, fMinReviews: 0, fQuantity: 1,
                 fMinPrice: 0, fMaxPrice: pMaxVal,
                 filtersEnabled: false,
                 fBonusExtraDiscount: false, fBonusTopRating: false, fBonusStarSeller: false, fBonusImported: false
@@ -73,6 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update UI inputs directly
             ['fn-score', 'fn-disc', 'fn-rat', 'fn-sal', 'fn-rev'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 0; });
             ['fs-score', 'fs-disc', 'fs-rat', 'fs-sal', 'fs-rev'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 0; });
+            const fnQty = document.getElementById('fn-qty'); if (fnQty) fnQty.value = 1;
+            const fsQty = document.getElementById('fs-qty'); if (fsQty) fsQty.value = 1;
             const pmin = document.getElementById('fs-pmin'); if (pmin) pmin.value = 0;
             const pmax = document.getElementById('fs-pmax'); if (pmax) pmax.value = pmax.max;
             const fMinP = document.getElementById('f-min-price'); if (fMinP) fMinP.value = 0;
@@ -134,6 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ігноруємо повідомлення від неактивних вкладок — це запобігає мерехтінню
             // коли кілька вкладок Temu відкриті одночасно
             if (sender.tab && !sender.tab.active) return;
+            if (isEditingMaxScore) return; // B12 FIX
+
             const infoInject = document.getElementById('tpw-info-inject');
             if (infoInject) {
                 infoInject.innerHTML = request.html;
@@ -143,21 +196,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (span.dataset.editAttached) return;
                     span.dataset.editAttached = 'true';
                     span.title = 'Клікніть для зміни ваги';
-                    span.style.cssText = 'cursor:pointer;border-bottom:1px dashed #ccc;padding:0 1px;';
+                    span.style.cssText = 'cursor:pointer; border-bottom:1px dashed transparent; display:inline-flex; align-items:center; gap:3px; padding:0 2px;';
+                    
+                    if (!span.querySelector('svg')) {
+                        span.insertAdjacentHTML('beforeend', '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>');
+                    }
+
                     span.addEventListener('click', function(ev) {
                         ev.stopPropagation();
                         const key = this.dataset.key;
                         const cur = parseInt(this.textContent) || 20;
                         const inp = document.createElement('input');
                         inp.type = 'number'; inp.value = cur; inp.min = 1; inp.max = 80;
-                        inp.style.cssText = 'width:32px;border:1px solid #34c759;border-radius:3px;font-size:11px;font-weight:700;text-align:center;outline:none;padding:0;background:#fff;';
+                        inp.style.cssText = 'width:32px; border:1px solid #34c759; border-radius:3px; font-size:11px; font-weight:700; text-align:center; outline:none; padding:0; background:#fff; margin-left:2px;';
+                        isEditingMaxScore = true;
                         this.replaceWith(inp); inp.focus(); inp.select();
                         const save = () => {
-                            let val = Math.max(1, Math.min(80, parseInt(inp.value) || cur));
+                            let val = Math.max(1, Math.min(100, parseInt(inp.value) || cur));
                             const newSpan = document.createElement('span');
                             newSpan.className = 'tt-max-editable'; newSpan.dataset.key = key;
-                            newSpan.textContent = val; inp.replaceWith(newSpan);
-                            chrome.storage.local.set({ [key]: val });
+                            newSpan.innerHTML = `${val}<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`;
+                            inp.replaceWith(newSpan);
+                            if (typeof applyProportionalWeightChange === 'function') {
+                                applyProportionalWeightChange(key, val);
+                            } else {
+                                chrome.storage.local.set({ [key]: val });
+                            }
+                            setTimeout(() => { isEditingMaxScore = false; }, 200);
                         };
                         inp.addEventListener('blur', save);
                         inp.addEventListener('keydown', e => { if (e.key==='Enter') inp.blur(); if (e.key==='Escape') { inp.value=cur; inp.blur(); } });
@@ -184,6 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!e.data || typeof e.data.type !== 'string') return;
 
             if (e.data.type === 'TPW_HOVER_INFO') {
+                if (isEditingMaxScore) return; // B12 FIX
+
                 const infoInject = document.getElementById('tpw-info-inject');
                 if (infoInject && e.data.html) {
                     infoInject.innerHTML = e.data.html;
@@ -206,21 +273,33 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (span.dataset.editAttached) return;
                         span.dataset.editAttached = 'true';
                         span.title = 'Клікніть для зміни ваги';
-                        span.style.cssText = 'cursor:pointer;border-bottom:1px dashed #ccc;padding:0 1px;';
+                        span.style.cssText = 'cursor:pointer; border-bottom:1px dashed transparent; display:inline-flex; align-items:center; gap:3px; padding:0 2px;';
+                        
+                        if (!span.querySelector('svg')) {
+                            span.insertAdjacentHTML('beforeend', '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>');
+                        }
+
                         span.addEventListener('click', function(ev) {
                             ev.stopPropagation();
                             const key = this.dataset.key;
                             const cur = parseInt(this.textContent) || 20;
                             const inp = document.createElement('input');
                             inp.type = 'number'; inp.value = cur; inp.min = 1; inp.max = 80;
-                            inp.style.cssText = 'width:32px;border:1px solid #34c759;border-radius:3px;font-size:11px;font-weight:700;text-align:center;outline:none;padding:0;background:#fff;';
+                            inp.style.cssText = 'width:32px; border:1px solid #34c759; border-radius:3px; font-size:11px; font-weight:700; text-align:center; outline:none; padding:0; background:#fff; margin-left:2px;';
+                            isEditingMaxScore = true;
                             this.replaceWith(inp); inp.focus(); inp.select();
                             const save = () => {
-                                let val = Math.max(1, Math.min(80, parseInt(inp.value) || cur));
+                                let val = Math.max(1, Math.min(100, parseInt(inp.value) || cur));
                                 const newSpan = document.createElement('span');
                                 newSpan.className = 'tt-max-editable'; newSpan.dataset.key = key;
-                                newSpan.textContent = val; inp.replaceWith(newSpan);
-                                chrome.storage.local.set({ [key]: val });
+                                newSpan.innerHTML = `${val}<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`;
+                                inp.replaceWith(newSpan);
+                                if (typeof applyProportionalWeightChange === 'function') {
+                                    applyProportionalWeightChange(key, val);
+                                } else {
+                                    chrome.storage.local.set({ [key]: val });
+                                }
+                                setTimeout(() => { isEditingMaxScore = false; }, 200);
                             };
                             inp.addEventListener('blur', save);
                             inp.addEventListener('keydown', e => { if (e.key==='Enter') inp.blur(); if (e.key==='Escape') { inp.value=cur; inp.blur(); } });
@@ -253,16 +332,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- COLLAPSE BUTTON: Forward to parent ---
         const btnCollapse = document.getElementById('btn-collapse');
+        let _isCollapsed = false; // Відслідковуємо стан локально
         if (btnCollapse) {
             btnCollapse.addEventListener('click', () => {
                 const tabsEl = document.getElementById('tpw-tabs');
                 const bodyEl = document.getElementById('tpw-body');
-                const isCollapsed = bodyEl && bodyEl.classList.contains('collapsed');
-                const newState = !isCollapsed;
-                if (tabsEl) tabsEl.classList.toggle('collapsed', newState);
-                if (bodyEl) bodyEl.classList.toggle('collapsed', newState);
+                _isCollapsed = !_isCollapsed;
+                if (tabsEl) tabsEl.classList.toggle('collapsed', _isCollapsed);
+                if (bodyEl) bodyEl.classList.toggle('collapsed', _isCollapsed);
                 
-                if (newState) {
+                if (_isCollapsed) {
                     btnCollapse.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
                     btnCollapse.title = "Розгорнути";
                 } else {
@@ -272,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 window.parent.postMessage({
                     type: 'TPW_COLLAPSE_TOGGLE',
-                    collapsed: newState
+                    collapsed: _isCollapsed
                 }, '*');
             });
         }
@@ -503,6 +582,27 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     bindSync('fs-score', 'fn-score'); bindSync('fs-disc', 'fn-disc'); bindSync('fs-rat', 'fn-rat'); bindSync('fs-rev', 'fn-rev'); bindSync('fs-sal', 'fn-sal');
+    // B11: fn-qty оновлюється прі пресет-кнопках (fs-qty видалено з Фільтрів)
+    const fnQtyEl = document.getElementById('fn-qty');
+    if (fnQtyEl) {
+        fnQtyEl.addEventListener('input', () => { triggerUpdate(); updateActivePreset(parseInt(fnQtyEl.value)||1); });
+        fnQtyEl.addEventListener('change', () => { triggerUpdate(); });
+    }
+
+    // B11: Preset-кнопки комплекту
+    function updateActivePreset(val) {
+        document.querySelectorAll('.qty-preset').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.val) === val);
+        });
+    }
+    document.querySelectorAll('.qty-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const val = parseInt(btn.dataset.val);
+            if (fnQtyEl) fnQtyEl.value = val;
+            updateActivePreset(val);
+            triggerUpdate();
+        });
+    });
 
 
 
@@ -568,6 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fMinRating: parseFloat(document.getElementById('fn-rat').value),
             fMinReviews: parseInt(document.getElementById('fn-rev').value),
             fMinSales: parseInt(document.getElementById('fn-sal').value),
+            fQuantity: parseInt(document.getElementById('fn-qty').value) || 1,
             fBonusExtraDiscount: document.getElementById('cb-bonus-extra-discount')?.checked || false,
             fBonusTopRating: document.getElementById('cb-bonus-top-rating')?.checked || false,
             fBonusStarSeller: document.getElementById('cb-bonus-star-seller')?.checked || false,
@@ -593,11 +694,8 @@ document.addEventListener('DOMContentLoaded', () => {
             localPageNativeCurrency = res.pageNativeCurrency;
         }
         
-        if (res.isSiteCurrencySwapped !== undefined) {
-             updateCurrencyUI(res.isSiteCurrencySwapped);
-        } else {
-             updateCurrencyUI(false); // UAH за замовчуванням
-        }
+        // Встановлюємо початковий стан currency ПІСЛЯ зчитування pageNativeCurrency
+        updateCurrencyUI(!!res.isSiteCurrencySwapped);
 
         if (res.currentCurrencyMax !== undefined) {
             pMinSlide.max = res.currentCurrencyMax;
@@ -616,6 +714,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (res.fMinRating !== undefined) { document.getElementById('fs-rat').value = res.fMinRating; document.getElementById('fn-rat').value = res.fMinRating; }
         if (res.fMinReviews !== undefined) { document.getElementById('fs-rev').value = res.fMinReviews; document.getElementById('fn-rev').value = res.fMinReviews; }
         if (res.fMinSales !== undefined) { document.getElementById('fs-sal').value = res.fMinSales; document.getElementById('fn-sal').value = res.fMinSales; }
+        if (res.fQuantity !== undefined) {
+            const fnQty = document.getElementById('fn-qty');
+            if (fnQty) { fnQty.value = res.fQuantity; updateActivePreset(res.fQuantity); }
+        }
 
         if (res.wDiscount !== undefined) currentWeights[0] = res.wDiscount;
         if (res.wRating !== undefined) currentWeights[1] = res.wRating;
@@ -635,14 +737,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (changes.fBonusExtraDiscount !== undefined) { const cb = document.getElementById('cb-bonus-extra-discount'); if (cb) cb.checked = changes.fBonusExtraDiscount.newValue; }
             if (changes.fBonusTopRating !== undefined) { const cb = document.getElementById('cb-bonus-top-rating'); if (cb) cb.checked = changes.fBonusTopRating.newValue; }
             if (changes.fBonusStarSeller !== undefined) { const cb = document.getElementById('cb-bonus-star-seller'); if (cb) cb.checked = changes.fBonusStarSeller.newValue; }
-            if (changes.fBonusImported !== undefined) { const cb = document.getElementById('cb-bonus-imported'); if (cb) cb.checked = changes.fBonusImported.newValue; }            if (changes.pageNativeCurrency !== undefined) {
-                localPageNativeCurrency = changes.pageNativeCurrency.newValue;
-                // update UI state using existing side-panel tracked value
-                chrome.storage.local.get(['isSiteCurrencySwapped'], (res) => {
-                    updateCurrencyUI(!!res.isSiteCurrencySwapped);
-                });
-            }
-
+            if (changes.fBonusImported !== undefined) { const cb = document.getElementById('cb-bonus-imported'); if (cb) cb.checked = changes.fBonusImported.newValue; }
+            
             if (changes.pageNativeCurrency !== undefined) {
                 localPageNativeCurrency = changes.pageNativeCurrency.newValue;
                 chrome.storage.local.get(['isSiteCurrencySwapped'], (res) => {
@@ -684,6 +780,11 @@ document.addEventListener('DOMContentLoaded', () => {
             updText('fMinRating', 'fs-rat', 'fn-rat');
             updText('fMinReviews', 'fs-rev', 'fn-rev');
             updText('fMinSales', 'fs-sal', 'fn-sal');
+            // B11: qty без fs-qty
+            if (changes['fQuantity'] !== undefined) {
+                const fnQ = document.getElementById('fn-qty');
+                if (fnQ) { fnQ.value = changes['fQuantity'].newValue; updateActivePreset(changes['fQuantity'].newValue); }
+            }
 
             // Update internal weights from external storage changes
             if (changes['wDiscount']) currentWeights[0] = changes['wDiscount'].newValue;

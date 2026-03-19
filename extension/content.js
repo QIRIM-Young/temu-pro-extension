@@ -13,6 +13,7 @@
     let fMinReviews = 10;
     let fMinPrice = 0;
     let fMaxPrice = 5000;
+    let fQuantity = 1;
 
     // Фільтри по плюшках (true = показувати ЛИШЕ товари з цим бонусом)
     let fBonusExtraDiscount = false;
@@ -151,9 +152,9 @@
     function loadSettings(callback) {
         chrome.storage.local.get([
             'isScriptEnabled', 'isPanelCollapsed', 'filtersEnabled',
-            'fMinScore', 'fMinDiscount', 'fMinRating', 'fMinSales', 'fMinReviews', 'fMinPrice', 'fMaxPrice',
+            'fMinScore', 'fMinDiscount', 'fMinRating', 'fMinSales', 'fMinReviews', 'fMinPrice', 'fMaxPrice', 'fQuantity',
             'fBonusExtraDiscount', 'fBonusTopRating', 'fBonusStarSeller', 'fBonusImported',
-            'wDiscount', 'wRating', 'wSales', 'wReviews', 'wBonuses', 'exchangeRate', 'isSidePanelOpen',
+            'wDiscount', 'wRating', 'wSales', 'wReviews', 'wBonuses', 'exchangeRate', 'isSidePanelOpen', 'preferredWindowMode',
             'currentCurrencyMax', 'currentCurrencyStep'
         ], (res) => {
             const validNum = (v, defaultVal) => (v !== undefined && !Number.isNaN(v) && v !== null) ? v : defaultVal;
@@ -169,6 +170,7 @@
             fMinReviews = validNum(res.fMinReviews, 10);
             fMinPrice = validNum(res.fMinPrice, 0);
             fMaxPrice = validNum(res.fMaxPrice, 10000); // Оновлений дефолт
+            fQuantity = validNum(res.fQuantity, 1);
 
             if (res.currentCurrencyMax !== undefined) currentCurrencyMax = res.currentCurrencyMax;
             if (res.currentCurrencyStep !== undefined) currentCurrencyStep = res.currentCurrencyStep;
@@ -185,8 +187,9 @@
             wBonuses = validNum(res.wBonuses, 20);
 
             exchangeRate = validNum(res.exchangeRate, 41.0);
-            // isSidePanelOpen не зберігається між сесіями — Side Panel сам повідомить при відкритті
-            isSidePanelOpen = false;
+            // Відновлюємо попередній стан вікна зі storage (floating vs sidepanel)
+            // isSidePanelOpen встановлюється пізніше через pingSidePanel
+            isSidePanelOpen = (res.preferredWindowMode === 'sidepanel');
 
             if (callback) callback();
         });
@@ -353,6 +356,7 @@
                 else if (key === 'fMinReviews') { fMinReviews = val; needsReprocess = true; needsUIUpdate = true; }
                 else if (key === 'fMinPrice') { fMinPrice = val; needsReprocess = true; needsUIUpdate = true; }
                 else if (key === 'fMaxPrice') { fMaxPrice = val; needsReprocess = true; needsUIUpdate = true; }
+                else if (key === 'fQuantity') { fQuantity = val; needsReprocess = true; }
                 else if (key === 'fBonusExtraDiscount') { fBonusExtraDiscount = val; needsReprocess = true; }
                 else if (key === 'fBonusTopRating') { fBonusTopRating = val; needsReprocess = true; }
                 else if (key === 'fBonusStarSeller') { fBonusStarSeller = val; needsReprocess = true; }
@@ -411,12 +415,13 @@
                     }, 100);
                 }
                 else if (key === 'isSidePanelOpen') {
-                    // Ігноруємо, якщо вікно ще не створено (щоб уникнути race condition при старті)
                     if (!booted) continue;
                     isSidePanelOpen = val;
                     const panel = document.getElementById('temu-pro-window');
                     if (panel) {
                         panel.style.display = isSidePanelOpen ? 'none' : 'flex';
+                        // Запам'ятовуємо вибір
+                        chrome.storage.local.set({ preferredWindowMode: isSidePanelOpen ? 'sidepanel' : 'floating' });
                     }
                 }
             }
@@ -460,8 +465,40 @@
         }
     });
 
-    // --- CSS СТИЛІ ---
-    function injectStyles() {
+    // --- ДОДАТОК B8: Функція негайного зчитування валюти ---
+function extractCurrencyEarly() {
+    if (pageCurrencyDetected) return;
+    const priceEl = document.querySelector('._3o_0q69S, ._2vD2xV0y, ._2gR7cTnt, ._1c9F-t-E ._1WdJJSDo ._2vD2xV0y');
+    if (!priceEl) return;
+    const txt = priceEl.textContent || '';
+    let isUAH = txt.includes('₴') || txt.toLowerCase().includes('грн');
+    let isUSD = txt.includes('$');
+    if (!isUAH && !isUSD) return;
+    
+    pageCurrencyDetected = true;
+    const detectedNative = isUSD ? 'USD' : 'UAH';
+    let maxUahEquivalent = Math.round((100 * exchangeRate) / 100) * 100;
+    let maxLimit = isUAH ? maxUahEquivalent : (isUSD ? 100 : maxUahEquivalent);
+    let stepLimit = isUAH ? 10 : (isUSD ? 1 : 10);
+    
+    chrome.storage.local.get(['fMaxPrice', 'currentCurrencyMax', 'currentCurrencyStep'], (res) => {
+        let updates = { pageNativeCurrency: detectedNative };
+        let currMax = res.fMaxPrice;
+        if (res.currentCurrencyMax !== maxLimit || res.currentCurrencyStep !== stepLimit) {
+            updates.currentCurrencyMax = maxLimit;
+            updates.currentCurrencyStep = stepLimit;
+            if ([10000, 5000, 1000, 100, res.currentCurrencyMax].includes(currMax) || !currMax) {
+                updates.fMaxPrice = maxLimit;
+            }
+        }
+        chrome.storage.local.set(updates);
+    });
+}
+// Спробуємо визначити відразу
+setTimeout(extractCurrencyEarly, 500);
+
+// --- SIDE PANEL SYNC ---
+function syncSettingsWithUI() {
         // Додаємо Google Fonts (Inter) для сучасного вигляду
         const fontLink = document.createElement('link');
         fontLink.rel = 'stylesheet';
@@ -1207,11 +1244,8 @@
                         sendToIframe({ type: 'TPW_HOVER_INFO', html, cardId });
                     }
                     lastHoveredHtml = html;
-                    // B7 FIX: на сторінці товару НЕ надсилаємо hover від grid-карток до sidepanel
-                    // щоб уникнути блимання між grid-карткою і даними товару сторінки
-                    if (!cachedMainProductHtml) {
-                        try { chrome.runtime.sendMessage({ action: 'hoverInfo', html }); } catch (ignore) {}
-                    }
+                    // Надсилаємо hover від grid-карток до sidepanel
+                    try { chrome.runtime.sendMessage({ action: 'hoverInfo', html }); } catch (ignore) {}
                 }, 250);
 
                 // Логічне автоперемикання вкладки (Intent to switch)
@@ -1691,13 +1725,17 @@
         if (targetTooltipCurrency === 'USD') {
             let tooltipPriceUSD = isUAH ? (price / exchangeRate) : price;
             let tooltipRrpUSD = isUAH ? (rrp / exchangeRate) : rrp;
-            priceHtml = `<b style="color:#27ae60; font-size: 16px;">$${tooltipPriceUSD.toFixed(2)}</b>`;
-            rrpStr = `$${tooltipRrpUSD.toFixed(2)}`;
+            let divP = tooltipPriceUSD / fQuantity;
+            let divR = tooltipRrpUSD / fQuantity;
+            priceHtml = `<b style="color:#27ae60; font-size: 16px;">$${divP.toFixed(2)}</b>${fQuantity > 1 ? `<span style="font-size:11px;color:#7f8c8d;margin-left:4px;font-weight:normal;">($${tooltipPriceUSD.toFixed(2)} / ${fQuantity}шт.)</span>` : ''}`;
+            rrpStr = `$${divR.toFixed(2)}`;
         } else {
             let tooltipPriceUAH = isUSD ? (price * exchangeRate) : price;
             let tooltipRrpUAH = isUSD ? (rrp * exchangeRate) : rrp;
-            priceHtml = `<b style="color:#27ae60; font-size: 16px;">${Math.round(tooltipPriceUAH).toLocaleString('uk-UA')} ₴</b>`;
-            rrpStr = `${Math.round(tooltipRrpUAH).toLocaleString('uk-UA')} ₴`;
+            let divP = tooltipPriceUAH / fQuantity;
+            let divR = tooltipRrpUAH / fQuantity;
+            priceHtml = `<b style="color:#27ae60; font-size: 16px;">${Math.round(divP).toLocaleString('uk-UA')} ₴</b>${fQuantity > 1 ? `<span style="font-size:11px;color:#7f8c8d;margin-left:4px;font-weight:normal;">(${Math.round(tooltipPriceUAH).toLocaleString('uk-UA')} ₴ / ${fQuantity}шт.)</span>` : ''}`;
+            rrpStr = `${Math.round(divR).toLocaleString('uk-UA')} ₴`;
         }
 
         cachedMainProductHtml = `<div style="text-align:left">
@@ -1713,11 +1751,11 @@
                 ${priceHtml}
             </div>
             <div class="tt-div"></div>
-            <div class="tt-row"><div class="tt-header"><span>${svgIcon('discount', '#e67e22')}${L.discount}: <b>${Math.floor(discountPercent)}%</b></span> <span class="tt-pts" style="color:#e67e22">${ptsDiscInt} / <span class="tt-max-editable" data-key="wDiscount">${maxPtsDiscInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsDiscInt, maxPtsDiscInt, '#e67e22')}</div>
-            <div class="tt-row"><div class="tt-header"><span>${svgIcon('star', '#f39c12')}${L.rating}: <b>${rating.toFixed(1)}</b>/5.0</span> <span class="tt-pts" style="color:#f39c12">${ptsRatInt} / <span class="tt-max-editable" data-key="wRating">${maxPtsRatInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsRatInt, maxPtsRatInt, '#f39c12')}</div>
-            <div class="tt-row"><div class="tt-header"><span>${svgIcon('sales', '#e74c3c')}${L.sales}: <b>${sales.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#e74c3c">${ptsSalInt} / <span class="tt-max-editable" data-key="wSales">${maxPtsSalInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsSalInt, maxPtsSalInt, '#e74c3c')}</div>
-            <div class="tt-row"><div class="tt-header"><span>${svgIcon('reviews', '#3498db')}${L.reviews}: <b>${reviews.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#3498db">${ptsRevInt} / <span class="tt-max-editable" data-key="wReviews">${maxPtsRevInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsRevInt, maxPtsRevInt, '#3498db')}</div>
-            <div class="tt-row tt-row-bonuses tpw-bonus-legend-wrap"><div class="tt-header" style="cursor:help"><span>${svgIcon('bonus', '#27ae60')}${L.bonuses}: <b>${bonusLines.length > 0 ? bonusLines.map(b=>b.name.split(' ')[0]).join(', ') : '—'}</b></span> <span class="tt-pts" style="color:#27ae60">${bonusContributionInt} / <span class="tt-max-editable" data-key="wBonuses">${maxPtsBonusInt}</span> ${L.pts}.</span></div>${renderMiniBars(bonusContributionInt, maxPtsBonusInt, '#27ae60')}
+            <div class="tt-row"><div class="tt-header"><span>${svgIcon('discount', '#e67e22')}${L.discount}: <b>${Math.floor(discountPercent)}%</b></span> <span class="tt-pts" style="color:#e67e22">${ptsDiscInt} / <span class="tt-max-editable" data-key="wDiscount">${maxPtsDiscInt}<svg class="tt-pencil-icon" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span></span></div>${renderMiniBars(ptsDiscInt, maxPtsDiscInt, '#e67e22')}</div>
+            <div class="tt-row"><div class="tt-header"><span>${svgIcon('star', '#f39c12')}${L.rating}: <b>${rating.toFixed(1)}</b>/5.0</span> <span class="tt-pts" style="color:#f39c12">${ptsRatInt} / <span class="tt-max-editable" data-key="wRating">${maxPtsRatInt}<svg class="tt-pencil-icon" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span></span></div>${renderMiniBars(ptsRatInt, maxPtsRatInt, '#f39c12')}</div>
+            <div class="tt-row"><div class="tt-header"><span>${svgIcon('sales', '#e74c3c')}${L.sales}: <b>${sales.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#e74c3c">${ptsSalInt} / <span class="tt-max-editable" data-key="wSales">${maxPtsSalInt}<svg class="tt-pencil-icon" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span></span></div>${renderMiniBars(ptsSalInt, maxPtsSalInt, '#e74c3c')}</div>
+            <div class="tt-row"><div class="tt-header"><span>${svgIcon('reviews', '#3498db')}${L.reviews}: <b>${reviews.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#3498db">${ptsRevInt} / <span class="tt-max-editable" data-key="wReviews">${maxPtsRevInt}<svg class="tt-pencil-icon" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span></span></div>${renderMiniBars(ptsRevInt, maxPtsRevInt, '#3498db')}</div>
+            <div class="tt-row tt-row-bonuses tpw-bonus-legend-wrap"><div class="tt-header" style="cursor:help"><span>${svgIcon('bonus', '#27ae60')}${L.bonuses}: <b>${bonusLines.length > 0 ? bonusLines.map(b=>b.name.split(' ')[0]).join(', ') : '—'}</b></span> <span class="tt-pts" style="color:#27ae60">${bonusContributionInt} / <span class="tt-max-editable" data-key="wBonuses">${maxPtsBonusInt}<svg class="tt-pencil-icon" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span></span></div>${renderMiniBars(bonusContributionInt, maxPtsBonusInt, '#27ae60')}
             ${bonusHtml}</div>
         </div>`;
     }
@@ -1741,7 +1779,9 @@
                 let pVal = parseFloat(rawText.replace(/[^0-9.,]/g, '').replace(',', '.'));
                 if (isNaN(pVal) || pVal <= 0) return;
 
-                if (!isSiteCurrencySwapped) {
+                const needsModification = isSiteCurrencySwapped || fQuantity > 1;
+
+                if (!needsModification) {
                     if (priceBlock.hasAttribute('data-swapped')) {
                         const badge = priceBlock.querySelector('.tpw-swapped-price');
                         if (badge) badge.remove();
@@ -1756,36 +1796,62 @@
                     return;
                 }
 
-                if (priceBlock.hasAttribute('data-swapped')) return;
+                if (priceBlock.hasAttribute('data-swapped') && priceBlock.getAttribute('data-swapped') === (isSiteCurrencySwapped+'_'+fQuantity)) return;
 
                 let pConverted, pNewText;
-                if (pIsUAH) { pConverted = pVal / exchangeRate; pNewText = `$${pConverted.toFixed(2)}`; }
-                else { pConverted = pVal * exchangeRate; pNewText = `${Math.round(pConverted).toLocaleString('uk-UA')} ₴`; }
+                if (isSiteCurrencySwapped) {
+                    pConverted = pIsUAH ? (pVal / exchangeRate) : (pVal * exchangeRate);
+                } else {
+                    pConverted = pVal;
+                }
+                
+                let dividedVal = pConverted / fQuantity;
+
+                if (isSiteCurrencySwapped) {
+                    pNewText = pIsUAH ? `$${dividedVal.toFixed(2)}` : `${Math.round(dividedVal).toLocaleString('uk-UA')} ₴`;
+                } else {
+                    pNewText = pIsUAH ? `${Math.round(dividedVal).toLocaleString('uk-UA')} ₴` : `$${dividedVal.toFixed(2)}`;
+                }
+
+                if (fQuantity > 1) {
+                    let origTxt = isSiteCurrencySwapped ? (pIsUAH ? `$${(pVal/exchangeRate).toFixed(2)}` : `${Math.round(pVal*exchangeRate).toLocaleString('uk-UA')} ₴`) : rawText;
+                    pNewText = `${pNewText} <span style="font-size:0.5em; opacity:0.8; font-weight:normal;">(${origTxt} / ${fQuantity}шт.)</span>`;
+                }
 
                 // Ховаємо видимі спрайти (пропускаємо position:absolute — це aria-hidden screen-reader)
                 let bStyle = 'font-weight:600;color:#000;font-size:28px;';
                 let bMax = 0;
+                let hasStrikethrough = false;
                 Array.from(priceBlock.children).forEach(ch => {
                     if (ch.classList.contains('tpw-swapped-price')) return;
                     const cs = window.getComputedStyle ? window.getComputedStyle(ch) : null;
                     if (!cs || cs.position === 'absolute') return;
                     const fs = parseFloat(cs.fontSize) || 0;
                     if (fs > bMax) { bMax = fs; bStyle = `font-weight:${cs.fontWeight};color:${cs.color};font-size:${cs.fontSize};`; }
+                    if (cs.textDecorationLine === 'line-through' || cs.textDecoration.includes('line-through')) hasStrikethrough = true;
+                    if (ch.tagName === 'DEL' || ch.tagName === 'S') hasStrikethrough = true;
                     if (ch.tpwOriginalDisplay === undefined) ch.tpwOriginalDisplay = ch.style.display || '';
                     ch.style.display = 'none';
                 });
 
+                if (priceBlock.tagName === 'DEL' || priceBlock.tagName === 'S' || (window.getComputedStyle && window.getComputedStyle(priceBlock).textDecoration.includes('line-through'))) hasStrikethrough = true;
+                if (hasStrikethrough) bStyle += ' text-decoration: line-through !important; opacity: 0.7;';
+
                 const old = priceBlock.querySelector('.tpw-swapped-price');
                 if (old) old.remove();
-                priceBlock.insertAdjacentHTML('beforeend', `<span class="tpw-swapped-price" style="display:inline;${bStyle}">${pNewText}${swapIconHtml}</span>`);
-                priceBlock.setAttribute('data-swapped', 'true');
+                
+                let iconStr = isSiteCurrencySwapped ? swapIconHtml : '';
+                priceBlock.insertAdjacentHTML('beforeend', `<span class="tpw-swapped-price" style="display:inline;${bStyle}">${pNewText}${iconStr}</span>`);
+                priceBlock.setAttribute('data-swapped', isSiteCurrencySwapped+'_'+fQuantity);
             });
         }
 
         // === БЛОК 2: КАРТКИ В ГРІДІ — обробляємо [data-raw-text] поза #goods_price ===
         document.querySelectorAll('[data-raw-text]').forEach(el => {
             if (el.closest('#goods_price')) return; // вже оброблено вище
-            if (!isSiteCurrencySwapped) {
+            const needsModification = isSiteCurrencySwapped || fQuantity > 1;
+
+            if (!needsModification) {
                 if (el.hasAttribute('data-swapped')) {
                     // Відновлюємо оригінальний DOM (робимо видимим) без видалення
                     Array.from(el.childNodes).forEach(child => {
@@ -1808,7 +1874,7 @@
                 return;
             }
 
-            if (el.hasAttribute('data-swapped')) return; // Вже замінено
+            if (el.hasAttribute('data-swapped') && el.getAttribute('data-swapped') === (isSiteCurrencySwapped+'_'+fQuantity)) return; // Вже замінено
 
             const rawText = el.getAttribute('data-raw-text');
             const isUAH = rawText.includes('₴') || rawText.toLowerCase().includes('грн');
@@ -1817,24 +1883,31 @@
             if (isNaN(val)) return;
 
             if (isUAH || isUSD) {
-                let convertedVal, html;
-                if (isUAH) {
-                    // UAH → USD
-                    convertedVal = val / exchangeRate;
-                    let parts = convertedVal.toFixed(2).split('.');
-                    html = `<span style="font-size: 0.75em; margin-right: 1px;">$</span><span style="font-size: 1em;">${parts[0]}</span><span style="font-size: 0.75em;">.${parts[1]}</span>`;
-                } else {
-                    // USD → UAH
-                    convertedVal = val * exchangeRate;
-                    let parts = convertedVal.toFixed(2).split('.');
-                    let intPart = parseInt(parts[0], 10).toLocaleString('uk-UA').replace(/,/g, ' ');
-                    html = `<span style="font-size: 1em;">${intPart}</span><span style="font-size: 0.75em;">.${parts[1]}</span><span style="font-size: 0.75em; margin-left: 2px;">₴</span>`;
+                // Проста функція форматування без багато спанів (виправляє баг "001")
+                const fmtPrice = (v, toUSD) => {
+                    if (toUSD) return `$${v.toFixed(2)}`;
+                    return `${Math.round(v).toLocaleString('uk-UA')} ₴`;
+                };
+
+                const toUSD = isSiteCurrencySwapped ? isUAH : !isUAH; // куди конвертуємо
+                const convertedVal = isSiteCurrencySwapped ? (isUAH ? val/exchangeRate : val*exchangeRate) : val;
+                const dividedVal = convertedVal / fQuantity;
+                let html = fmtPrice(dividedVal, toUSD);
+
+                if (fQuantity > 1) {
+                    const origTxt = fmtPrice(convertedVal, toUSD);
+                    html += ` <span style="font-size:0.6em; opacity:0.75; font-weight:normal;">(${origTxt}/${fQuantity}шт.)</span>`;
                 }
+
 
                 // Зберігаємо оригінальний HTML для безпеки, хоча ми його більше не перезаписуємо
                 if (!el.hasAttribute('data-raw-html')) {
                     el.setAttribute('data-raw-html', el.innerHTML);
                 }
+
+                let bStyle = '';
+                let bMax = 0;
+                let hasStrikethrough = false;
 
                 // Безпечно ховаємо оригінальні елементи (щоб зберегти їхні Event Listeners)
                 Array.from(el.childNodes).forEach(child => {
@@ -1843,6 +1916,13 @@
                             if (child.tpwOriginalDisplay === undefined) {
                                 child.tpwOriginalDisplay = child.style.display || '';
                             }
+                            const cs = window.getComputedStyle ? window.getComputedStyle(child) : null;
+                            if (cs) {
+                                const fs = parseFloat(cs.fontSize) || 0;
+                                if (fs > bMax) { bMax = fs; bStyle = `font-weight:${cs.fontWeight};color:${cs.color};font-size:${cs.fontSize};`; }
+                                if (cs.textDecorationLine === 'line-through' || cs.textDecoration.includes('line-through')) hasStrikethrough = true;
+                            }
+                            if (child.tagName === 'DEL' || child.tagName === 'S') hasStrikethrough = true;
                             child.style.display = 'none';
                         }
                     } else if (child.nodeType === Node.TEXT_NODE) {
@@ -1853,19 +1933,22 @@
                     }
                 });
 
+                if (el.tagName === 'DEL' || el.tagName === 'S' || (window.getComputedStyle && window.getComputedStyle(el).textDecoration.includes('line-through'))) hasStrikethrough = true;
+                if (hasStrikethrough) bStyle += ' text-decoration: line-through !important; opacity: 0.7;';
+
                 // Видаляємо попередній if exists
                 let existingSwapped = el.querySelector('.tpw-swapped-price');
                 if (existingSwapped) existingSwapped.remove();
 
                 // T3.1 Іконка конвертації валюти
                 const tooltipText = LANG === 'uk' ? 'Сконвертовано\\n(оригінальна валюта прихована)' : 'Converted\\n(original currency hidden)';
-                const iconHtml = `<span class="tpw-currency-swap-icon" title="${tooltipText}" style="display:inline-flex; margin-left:5px; vertical-align:middle; opacity:0.6; cursor:help;">${svgIcon('swap', '#95a5a6', 11)}</span>`;
+                const iconHtml = isSiteCurrencySwapped ? `<span class="tpw-currency-swap-icon" title="${tooltipText}" style="display:inline-flex; margin-left:5px; vertical-align:middle; opacity:0.6; cursor:help;">${svgIcon('swap', '#95a5a6', 11)}</span>` : '';
 
-                // Додаємо свій елемент, який успадкує базові стилі flex батька
-                let wrapperHtml = `<span class="tpw-swapped-price" style="display:inline-flex; align-items:baseline; font-weight:bold; color:inherit;">${html}${iconHtml}</span>`;
+                // B6: Додаємо свій елемент з успадкованим стилем (розмір шрифту, колір) від найтелепнішого дочірнього 
+                let wrapperHtml = `<span class="tpw-swapped-price" style="display:inline-block; ${bStyle}">${html}${iconHtml}</span>`;
                 el.insertAdjacentHTML('beforeend', wrapperHtml);
 
-                el.setAttribute('data-swapped', 'true');
+                el.setAttribute('data-swapped', isSiteCurrencySwapped+'_'+fQuantity);
             }
         });
     }
@@ -1882,7 +1965,7 @@
                 el.removeAttribute('data-processed');
                 el.removeAttribute('data-raw-text');
                 el.removeAttribute('data-raw-html');
-                const bar = el.querySelector(':scope > .tpw-score-container');
+                const bar = el.querySelector('.tpw-score-container');
                 if (bar) bar.remove();
             });
         }
@@ -1893,8 +1976,8 @@
         // Оновлюємо дані головного товару (якщо ми на сторінці товару)
         updateMainProductInfo();
 
-        // C3: Авто-показ аналітики товару відразу після завантаження (без потреби hover)
-        if (cachedMainProductHtml) {
+        // C3: Авто-показ аналітики товару відразу після завантаження (якщо нічого не ховериться маніпулятором миші)
+        if (cachedMainProductHtml && !_lastHoveredCardId) {
             sendToIframe({type: 'TPW_HOVER_INFO', html: cachedMainProductHtml});
             try { chrome.runtime.sendMessage({ action: 'hoverInfo', html: cachedMainProductHtml }); } catch (ignore) { }
         }
@@ -1946,7 +2029,7 @@
                 el.style.display = '';
                 delete el.dataset.ghostArmed;
                 
-                const bar = el.querySelector(':scope > .tpw-score-container');
+                const bar = el.querySelector('.tpw-score-container');
                 if (bar) bar.remove();
             });
             // Не ховаємо iframe повністю, щоб користувач міг увімкнути скрипт назад через тумблер!
@@ -2243,6 +2326,8 @@
                 } else {
                     filterPrice = isUSD ? (price * exchangeRate) : price;
                 }
+                
+                filterPrice = filterPrice / fQuantity;
 
                 // Визначення наявності конкретних бонусів для фільтрів
                 const hasExtraDiscount = extraSave > 0 && rrp > 0;
@@ -2305,15 +2390,40 @@
                 if (nestedProcessedWithBar) return; // Пропускаємо цей wrapper — дочірня картка вже має бар
 
                 // Далі, якщо parent вже містить інший товар (попередження 2 балів у 1 списку)
-                const siblingWithBar = parent.querySelector(':scope > .tpw-score-container');
+                const siblingWithBar = parent.querySelector('.tpw-score-container');
                 if (siblingWithBar && product !== parent) return; // parent уже отримав бар для іншої картки
 
                 // Д: Захист від вставки badge на нетоварні елементи (кошик, sidebar, checkout)
                 if (product.closest('#temu-pro-window, .cart-wrapper, .Checkout-wrapper, .OrderItem-wrapper, .MiniCart-wrapper')) return;
 
-                let bar = product.querySelector(':scope > .tpw-score-container');
-                if (!bar) { bar = document.createElement('div'); bar.className = 'tpw-score-container'; product.prepend(bar); }
-                if (getComputedStyle(product).position === 'static') product.style.position = 'relative';
+                // B2 Fix v2: знаходимо перший DIV цо під img, пропускаючи picture/source
+                const _img = product.querySelector('img:not([role="presentation"]):not([aria-hidden])') || product.querySelector('img');
+                let mountTarget = null;
+                if (_img) {
+                    let p = _img.parentElement;
+                    // Ідемо вгору поки не знайдемо div з відносним/абсолютним position
+                    // або до мrax 3 предків, уникаючи picture/source
+                    for (let i = 0; i < 4 && p && p !== product; i++) {
+                        const tag = p.tagName ? p.tagName.toLowerCase() : '';
+                        if (tag === 'div') {
+                            mountTarget = p;
+                            break;
+                        }
+                        p = p.parentElement;
+                    }
+                }
+                if (!mountTarget || mountTarget === product) {
+                    mountTarget = product.querySelector('._1WdJJSDo') || product.querySelector('.img-wrap') || product.querySelector('div');
+                }
+                if (!mountTarget) mountTarget = product;
+
+                let bar = mountTarget.querySelector(':scope > .tpw-score-container');
+                if (!bar) {
+                    bar = document.createElement('div');
+                    bar.className = 'tpw-score-container';
+                    mountTarget.appendChild(bar); // appendChild replaces prepend to ensure proper stacking
+                }
+                if (getComputedStyle(mountTarget).position === 'static') mountTarget.style.position = 'relative';
 
                 // E: Donut glassmorphism badge — 44px, число жовтого кольору кільця
                 let displayScore = isNaN(finalScore) ? 0 : finalScore;
@@ -2376,13 +2486,17 @@
                 if (targetTooltipCurrency === 'USD') {
                     let tooltipPriceUSD = isUAH ? (price / exchangeRate) : price;
                     let tooltipRrpUSD = isUAH ? (rrp / exchangeRate) : rrp;
-                    priceHtml = `<b style="color:#27ae60; font-size: 16px;">$${tooltipPriceUSD.toFixed(2)}</b>`;
-                    rrpStr = `$${tooltipRrpUSD.toFixed(2)}`;
+                    let divP = tooltipPriceUSD / fQuantity;
+                    let divR = tooltipRrpUSD / fQuantity;
+                    priceHtml = `<b style="color:#27ae60; font-size: 16px;">$${divP.toFixed(2)}</b>${fQuantity > 1 ? `<span style="font-size:11px;color:#7f8c8d;margin-left:4px;font-weight:normal;">($${tooltipPriceUSD.toFixed(2)} / ${fQuantity}шт.)</span>` : ''}`;
+                    rrpStr = `$${divR.toFixed(2)}`;
                 } else {
                     let tooltipPriceUAH = isUSD ? (price * exchangeRate) : price;
                     let tooltipRrpUAH = isUSD ? (rrp * exchangeRate) : rrp;
-                    priceHtml = `<b style="color:#27ae60; font-size: 16px;">${Math.round(tooltipPriceUAH).toLocaleString('uk-UA')} ₴</b>`;
-                    rrpStr = `${Math.round(tooltipRrpUAH).toLocaleString('uk-UA')} ₴`;
+                    let divP = tooltipPriceUAH / fQuantity;
+                    let divR = tooltipRrpUAH / fQuantity;
+                    priceHtml = `<b style="color:#27ae60; font-size: 16px;">${Math.round(divP).toLocaleString('uk-UA')} ₴</b>${fQuantity > 1 ? `<span style="font-size:11px;color:#7f8c8d;margin-left:4px;font-weight:normal;">(${Math.round(tooltipPriceUAH).toLocaleString('uk-UA')} ₴ / ${fQuantity}шт.)</span>` : ''}`;
+                    rrpStr = `${Math.round(divR).toLocaleString('uk-UA')} ₴`;
                 }
 
                 parent.setAttribute('data-tooltip-html', `<div style="text-align:left">
@@ -2398,10 +2512,11 @@
                     </div>
                     <div class="tt-div"></div>
 
-                    <div class="tt-row"><div class="tt-header"><span>${svgIcon('discount', '#9b59b6')}${L.discount}: <b>${Math.floor(discountPercent)}%</b></span> <span class="tt-pts" style="color:#9b59b6">${ptsDiscInt} / ${maxPtsDiscInt} ${L.pts}.</span></div>${renderMiniBars(ptsDiscInt, maxPtsDiscInt, '#9b59b6')}</div>
-                    <div class="tt-row"><div class="tt-header"><span>${svgIcon('star', '#f1c40f')}${L.rating}: <b>${rating.toFixed(1)}</b>/5.0</span> <span class="tt-pts" style="color:#f1c40f">${ptsRatInt} / ${maxPtsRatInt} ${L.pts}.</span></div>${renderMiniBars(ptsRatInt, maxPtsRatInt, '#f1c40f')}</div>
-                    <div class="tt-row"><div class="tt-header"><span>${svgIcon('sales', '#e74c3c')}${L.sales}: <b>${sales.toLocaleString('uk-UA')}+</b></span> <span class="tt-pts" style="color:#e74c3c">${ptsSalInt} / ${maxPtsSalInt} ${L.pts}.</span></div>${renderMiniBars(ptsSalInt, maxPtsSalInt, '#e74c3c')}</div>
-                    <div class="tt-row"><div class="tt-header"><span>${svgIcon('reviews', '#3498db')}${L.reviews}: <b>${reviews.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#3498db">${ptsRevInt} / ${maxPtsRevInt} ${L.pts}.</span></div>${renderMiniBars(ptsRevInt, maxPtsRevInt, '#3498db')}</div>
+                    <div class="tt-row"><div class="tt-header"><span>${svgIcon('discount', '#9b59b6')}${L.discount}: <b>${Math.floor(discountPercent)}%</b></span> <span class="tt-pts" style="color:#9b59b6">${ptsDiscInt} / <span class="tt-max-editable" data-key="wDiscount">${maxPtsDiscInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsDiscInt, maxPtsDiscInt, '#9b59b6')}</div>
+                    <div class="tt-row"><div class="tt-header"><span>${svgIcon('star', '#f1c40f')}${L.rating}: <b>${rating.toFixed(1)}</b>/5.0</span> <span class="tt-pts" style="color:#f1c40f">${ptsRatInt} / <span class="tt-max-editable" data-key="wRating">${maxPtsRatInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsRatInt, maxPtsRatInt, '#f1c40f')}</div>
+                    <div class="tt-row"><div class="tt-header"><span>${svgIcon('sales', '#e74c3c')}${L.sales}: <b>${sales.toLocaleString('uk-UA')}+</b></span> <span class="tt-pts" style="color:#e74c3c">${ptsSalInt} / <span class="tt-max-editable" data-key="wSales">${maxPtsSalInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsSalInt, maxPtsSalInt, '#e74c3c')}</div>
+                    <div class="tt-row"><div class="tt-header"><span>${svgIcon('reviews', '#3498db')}${L.reviews}: <b>${reviews.toLocaleString('uk-UA')}</b></span> <span class="tt-pts" style="color:#3498db">${ptsRevInt} / <span class="tt-max-editable" data-key="wReviews">${maxPtsRevInt}</span> ${L.pts}.</span></div>${renderMiniBars(ptsRevInt, maxPtsRevInt, '#3498db')}</div>
+                    <div class="tt-row tt-row-bonuses tpw-bonus-legend-wrap"><div class="tt-header"><span>${svgIcon('bonus', '#27ae60')}${L.bonuses}: <b>${bonusLines.length > 0 ? bonusLines.map(b=>b.name.split(' ')[0]).join(', ') : '—'}</b></span> <span class="tt-pts" style="color:#27ae60">${bonusContributionInt} / <span class="tt-max-editable" data-key="wBonuses">20</span> ${L.pts}.</span></div>${renderMiniBars(bonusContributionInt, 20, '#27ae60')}</div>
 
                     ${bonusHtml}
                 </div>`);
@@ -2464,6 +2579,7 @@
         updateVar('fMinReviews', v => fMinReviews = v);
         updateVar('fMinPrice', v => fMinPrice = v);
         updateVar('fMaxPrice', v => fMaxPrice = v);
+        updateVar('fQuantity', v => fQuantity = v);
         updateVar('wDiscount', v => wDiscount = v);
         updateVar('wRating', v => wRating = v);
         updateVar('wSales', v => wSales = v);
@@ -2488,24 +2604,37 @@
     function boot() {
         if (_bootStarted) return;
         _bootStarted = true;
-        injectStyles();
 
         const f2Style = document.createElement('style');
         f2Style.innerHTML = `
-            /* Рамка активної картки: inset box-shadow на after-псевдоелементі, щоб бути ПОВЕРХ будь-якого контенту і не обрізатись overflow:hidden */
+            /* B3: Рамка активної картки */
             .tpw-active-card-highlight {
                 position: relative;
                 z-index: 100 !important;
+                outline: 2px solid #ff9500 !important;
+                outline-offset: 6px !important;
+                border-radius: 10px !important;
             }
-            .tpw-active-card-highlight::after {
-                content: "" !important;
-                position: absolute !important;
-                top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-                border: 2px solid #ff9500 !important;
-                box-sizing: border-box !important;
-                pointer-events: none !important;
-                z-index: 99999 !important;
+            /* B3: карусель має менший відступ щоб не заходити за бар */
+            .splide__slide .tpw-active-card-highlight,
+            .splide__slide.tpw-active-card-highlight {
+                outline-offset: 3px !important;
                 border-radius: 8px !important;
+            }
+            /* B12: Олівець в толтипі аналітики — hover-only */
+            .tt-max-editable .tt-pencil-icon {
+                opacity: 0;
+                transition: opacity 0.15s;
+            }
+            .tt-max-editable:hover .tt-pencil-icon {
+                opacity: 0.6;
+            }
+            /* Бонусна легенда — hover-only */
+            .tpw-bonus-legend-wrap .tpw-bonus-legend {
+                display: none;
+            }
+            .tpw-bonus-legend-wrap:hover .tpw-bonus-legend {
+                display: block;
             }
         `;
         document.head.appendChild(f2Style);
@@ -2572,20 +2701,26 @@
             try {
                 chrome.runtime.sendMessage({ action: 'pingSidePanel' }, (response) => {
                     if (chrome.runtime.lastError) {
-                        // Side Panel не відкритий. Якщо storage каже що відкритий — виправляємо баг синхронізації
-                        if (isSidePanelOpen) {
-                            isSidePanelOpen = false;
-                            chrome.storage.local.set({ isSidePanelOpen: false });
-                            const panel = document.getElementById('temu-pro-window');
-                            if (panel) panel.style.display = 'flex';
-                        }
+                        // Side Panel не відкритий
+                        isSidePanelOpen = false;
+                        chrome.storage.local.set({ isSidePanelOpen: false, preferredWindowMode: 'floating' });
+                        const panel = document.getElementById('temu-pro-window');
+                        if (panel) panel.style.display = 'flex';
                         return;
                     }
                     if (response && response.alive) {
-                        // Side Panel відкритий — ховаємо плаваюче вікно
-                        isSidePanelOpen = true;
-                        const panel = document.getElementById('temu-pro-window');
-                        if (panel) panel.style.display = 'none';
+                        // Side Panel відкритий — запам'ятовуємо, але поважаємо преференцію
+                        if (isSidePanelOpen) {
+                            // Преференц sidepanel — ховаємо floating
+                            const panel = document.getElementById('temu-pro-window');
+                            if (panel) panel.style.display = 'none';
+                        } else {
+                            // Преференц floating — Side Panel від криться, floating залишаємо
+                            isSidePanelOpen = true;
+                            chrome.storage.local.set({ isSidePanelOpen: true });
+                            const panel = document.getElementById('temu-pro-window');
+                            if (panel) panel.style.display = 'none';
+                        }
                     }
                 });
             } catch (ignore) {
